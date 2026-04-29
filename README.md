@@ -4,9 +4,9 @@ A comprehensive organization productivity application designed to streamline tea
 
 ## Contributors
 
-- **Sebastian Ronny - [@Thalleous88]** 
-- **Xander Trevor Tengari - [@xanderteng]**
-- **Jordhy Alexander Wibisono - [@Jordhy-jpg]**
+- **Sebastian Ronny - [@Thalleous88](https://github.com/Thalleous88)** 
+- **Xander Trevor Tengari - [@xanderteng](https://github.com/xanderteng)**
+- **Jordhy Alexander Wibisono - [@Jordhy-jpg](https://github.com/Jordhy-jpg)**
 
 ## Tech Stack
 

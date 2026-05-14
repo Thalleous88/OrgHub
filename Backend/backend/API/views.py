@@ -13,12 +13,16 @@ from .models import (
     Organization,
     OrganizationMembership,
     Project,
+    ProjectMembership,
     ResourceDocument,
+    Task,
 )
 from .permissions import (
     can_access_repository,
     can_access_resource_document,
+    can_access_task,
     can_delete_resource_document,
+    can_delete_task,
 )
 from .serializers import (
     DivisionSerializer,
@@ -30,6 +34,7 @@ from .serializers import (
     ProjectSerializer,
     RegisterSerializer,
     ResourceDocumentSerializer,
+    TaskSerializer,
     UserSerializer,
 )
 
@@ -246,3 +251,68 @@ class ResourceDocumentDownloadView(APIView):
         if not can_access_resource_document(request.user, document):
             raise PermissionDenied("You do not have access to this document.")
         return FileResponse(document.file.open("rb"), as_attachment=True)
+
+
+class TaskListCreateView(generics.ListCreateAPIView):
+    serializer_class = TaskSerializer
+
+    def get_queryset(self):
+        return (
+            Task.objects.filter(
+                Q(created_by=self.request.user)
+                | Q(assigned_to=self.request.user)
+                | Q(
+                    division__memberships__user=self.request.user,
+                    division__memberships__role=DivisionMembership.Role.DIVISION_HEAD,
+                    division__memberships__is_active=True,
+                )
+                | Q(
+                    division__organization__memberships__user=self.request.user,
+                    division__organization__memberships__role=OrganizationMembership.Role.CORE_BOARD,
+                    division__organization__memberships__is_active=True,
+                )
+                | Q(
+                    project__memberships__user=self.request.user,
+                    project__memberships__role=ProjectMembership.Role.PROJECT_LEAD,
+                    project__memberships__is_active=True,
+                )
+                | Q(
+                    project__division__memberships__user=self.request.user,
+                    project__division__memberships__role=DivisionMembership.Role.DIVISION_HEAD,
+                    project__division__memberships__is_active=True,
+                )
+                | Q(
+                    project__division__organization__memberships__user=self.request.user,
+                    project__division__organization__memberships__role=OrganizationMembership.Role.CORE_BOARD,
+                    project__division__organization__memberships__is_active=True,
+                )
+            )
+            .select_related(
+                "division__organization",
+                "project__division__organization",
+                "created_by",
+                "assigned_to",
+            )
+            .distinct()
+        )
+
+
+class TaskDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = TaskSerializer
+    queryset = Task.objects.select_related(
+        "division__organization",
+        "project__division__organization",
+        "created_by",
+        "assigned_to",
+    )
+
+    def get_object(self):
+        task = super().get_object()
+        if not can_access_task(self.request.user, task):
+            raise PermissionDenied("You do not have access to this task.")
+        return task
+
+    def perform_destroy(self, instance):
+        if not can_delete_task(self.request.user, instance):
+            raise PermissionDenied("You do not have permission to delete this task.")
+        instance.delete()

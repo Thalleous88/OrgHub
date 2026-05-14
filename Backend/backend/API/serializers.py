@@ -11,10 +11,13 @@ from .models import (
     Project,
     ProjectMembership,
     ResourceDocument,
+    Task,
 )
 from .permissions import (
+    can_assign_task,
     can_manage_division,
     can_manage_project_members,
+    can_update_task,
     can_upload_resource_document,
     is_core_board,
 )
@@ -380,3 +383,69 @@ class ResourceDocumentSerializer(serializers.ModelSerializer):
         else:
             kwargs["project"] = scope
         return ResourceDocument.objects.create(**kwargs)
+
+
+class TaskSerializer(serializers.ModelSerializer):
+    created_by_email = serializers.EmailField(source="created_by.email", read_only=True)
+    assigned_to_email = serializers.EmailField(source="assigned_to.email", read_only=True)
+
+    class Meta:
+        model = Task
+        fields = [
+            "id",
+            "division",
+            "project",
+            "title",
+            "description",
+            "status",
+            "due_at",
+            "created_by",
+            "created_by_email",
+            "assigned_to",
+            "assigned_to_email",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "created_by",
+            "created_by_email",
+            "assigned_to_email",
+            "created_at",
+            "updated_at",
+        ]
+
+    def validate(self, attrs):
+        request = self.context["request"]
+        instance = self.instance
+        division = attrs.get("division", getattr(instance, "division", None))
+        project = attrs.get("project", getattr(instance, "project", None))
+        assigned_to = attrs.get("assigned_to", getattr(instance, "assigned_to", None))
+
+        if bool(division) == bool(project):
+            raise serializers.ValidationError(
+                "Task must belong to exactly one division or project."
+            )
+
+        if instance is None:
+            if not can_assign_task(request.user, assigned_to, division=division, project=project):
+                raise serializers.ValidationError(
+                    "You do not have permission to assign this task."
+                )
+            return attrs
+
+        changed_fields = set(attrs.keys())
+        if not can_update_task(request.user, instance, changed_fields):
+            raise serializers.ValidationError("You do not have permission to update this task.")
+
+        reassignment_fields = {"division", "project", "assigned_to"}
+        if changed_fields & reassignment_fields:
+            if not can_assign_task(request.user, assigned_to, division=division, project=project):
+                raise serializers.ValidationError(
+                    "You do not have permission to reassign this task."
+                )
+
+        return attrs
+
+    def create(self, validated_data):
+        return Task.objects.create(created_by=self.context["request"].user, **validated_data)

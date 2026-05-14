@@ -10,6 +10,7 @@ from .models import (
     Project,
     ProjectMembership,
     ResourceDocument,
+    Task,
 )
 
 
@@ -22,3 +23,4 @@ admin.site.register(DivisionMembership)
 admin.site.register(ProjectMembership)
 admin.site.register(Invitation)
 admin.site.register(ResourceDocument)
+admin.site.register(Task)

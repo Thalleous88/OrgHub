@@ -17,6 +17,7 @@ from .models import (
     Project,
     ProjectMembership,
     ResourceDocument,
+    Task,
 )
 
 
@@ -404,3 +405,185 @@ class ResourceDocumentAPITests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class TaskAPITests(APITestCase):
+    def setUp(self):
+        self.core_user = User.objects.create_user(
+            username="core-tasks@example.com",
+            email="core-tasks@example.com",
+            password="Password123",
+        )
+        self.division_head_user = User.objects.create_user(
+            username="head@example.com",
+            email="head@example.com",
+            password="Password123",
+        )
+        self.project_lead_user = User.objects.create_user(
+            username="lead@example.com",
+            email="lead@example.com",
+            password="Password123",
+        )
+        self.member_user = User.objects.create_user(
+            username="task-member@example.com",
+            email="task-member@example.com",
+            password="Password123",
+        )
+        self.other_member_user = User.objects.create_user(
+            username="other-member@example.com",
+            email="other-member@example.com",
+            password="Password123",
+        )
+        self.organization = Organization.objects.create(
+            name="Task Org",
+            created_by=self.core_user,
+        )
+        self.division = Division.objects.create(
+            organization=self.organization,
+            name="Operations",
+        )
+        self.project = Project.objects.create(
+            division=self.division,
+            name="Launch",
+        )
+
+        for user in [
+            self.core_user,
+            self.division_head_user,
+            self.project_lead_user,
+            self.member_user,
+            self.other_member_user,
+        ]:
+            OrganizationMembership.objects.create(
+                organization=self.organization,
+                user=user,
+                role=(
+                    OrganizationMembership.Role.CORE_BOARD
+                    if user == self.core_user
+                    else OrganizationMembership.Role.MEMBER
+                ),
+            )
+
+        DivisionMembership.objects.create(
+            division=self.division,
+            user=self.division_head_user,
+            role=DivisionMembership.Role.DIVISION_HEAD,
+        )
+        for user in [self.project_lead_user, self.member_user, self.other_member_user]:
+            DivisionMembership.objects.create(
+                division=self.division,
+                user=user,
+                role=DivisionMembership.Role.MEMBER,
+            )
+        ProjectMembership.objects.create(
+            project=self.project,
+            user=self.project_lead_user,
+            role=ProjectMembership.Role.PROJECT_LEAD,
+        )
+        for user in [self.member_user, self.other_member_user]:
+            ProjectMembership.objects.create(
+                project=self.project,
+                user=user,
+                role=ProjectMembership.Role.MEMBER,
+            )
+
+    def test_core_board_can_assign_task_to_division_head(self):
+        self.client.force_authenticate(self.core_user)
+
+        response = self.client.post(
+            reverse("task_list"),
+            {
+                "division": self.division.pk,
+                "title": "Prepare division plan",
+                "assigned_to": self.division_head_user.pk,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        task = Task.objects.get(title="Prepare division plan")
+        self.assertEqual(task.status, Task.Status.TODO)
+        self.assertEqual(task.assigned_to, self.division_head_user)
+
+    def test_core_board_cannot_assign_directly_to_project_member(self):
+        self.client.force_authenticate(self.core_user)
+
+        response = self.client.post(
+            reverse("task_list"),
+            {
+                "project": self.project.pk,
+                "title": "Skip hierarchy",
+                "assigned_to": self.member_user.pk,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_division_head_can_assign_task_to_project_lead(self):
+        self.client.force_authenticate(self.division_head_user)
+
+        response = self.client.post(
+            reverse("task_list"),
+            {
+                "project": self.project.pk,
+                "title": "Build project roadmap",
+                "assigned_to": self.project_lead_user.pk,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_project_lead_can_assign_task_to_project_member(self):
+        self.client.force_authenticate(self.project_lead_user)
+
+        response = self.client.post(
+            reverse("task_list"),
+            {
+                "project": self.project.pk,
+                "title": "Draft workshop material",
+                "assigned_to": self.member_user.pk,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_assigned_user_can_update_only_task_status(self):
+        task = Task.objects.create(
+            project=self.project,
+            title="Finish slides",
+            created_by=self.project_lead_user,
+            assigned_to=self.member_user,
+        )
+        self.client.force_authenticate(self.member_user)
+
+        response = self.client.patch(
+            reverse("task_detail", kwargs={"pk": task.pk}),
+            {"status": "InProgress"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        task.refresh_from_db()
+        self.assertEqual(task.status, Task.Status.IN_PROGRESS)
+
+        response = self.client.patch(
+            reverse("task_detail", kwargs={"pk": task.pk}),
+            {"title": "Rename task"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_other_member_cannot_read_unassigned_task(self):
+        task = Task.objects.create(
+            project=self.project,
+            title="Private assignment",
+            created_by=self.project_lead_user,
+            assigned_to=self.member_user,
+        )
+
+        self.client.force_authenticate(self.other_member_user)
+        response = self.client.get(reverse("task_detail", kwargs={"pk": task.pk}))
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)

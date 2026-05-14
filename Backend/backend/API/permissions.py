@@ -113,5 +113,60 @@ def can_delete_resource_document(user, document):
     )
 
 
+def can_assign_task(user, assigned_to, division=None, project=None):
+    if division is not None:
+        return is_core_board(user, division.organization) and DivisionMembership.objects.filter(
+            user=assigned_to,
+            division=division,
+            role=DivisionMembership.Role.DIVISION_HEAD,
+            is_active=True,
+        ).exists()
+
+    if project is None:
+        return False
+
+    if is_division_head(user, project.division):
+        return ProjectMembership.objects.filter(
+            user=assigned_to,
+            project=project,
+            role=ProjectMembership.Role.PROJECT_LEAD,
+            is_active=True,
+        ).exists()
+
+    if is_project_lead(user, project):
+        return ProjectMembership.objects.filter(
+            user=assigned_to,
+            project=project,
+            role=ProjectMembership.Role.MEMBER,
+            is_active=True,
+        ).exists()
+
+    return False
+
+
+def can_access_task(user, task):
+    if task.created_by_id == user.id or task.assigned_to_id == user.id:
+        return True
+    if task.division_id:
+        return can_manage_division(user, task.division)
+    return (
+        is_core_board(user, task.project.division.organization)
+        or is_division_head(user, task.project.division)
+        or is_project_lead(user, task.project)
+    )
+
+
+def can_update_task(user, task, changed_fields):
+    if task.created_by_id == user.id:
+        return True
+    if changed_fields <= {"status"}:
+        return task.assigned_to_id == user.id
+    return False
+
+
+def can_delete_task(user, task):
+    return task.created_by_id == user.id
+
+
 class IsAuthenticated(permissions.IsAuthenticated):
     pass

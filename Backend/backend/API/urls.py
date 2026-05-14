@@ -16,6 +16,8 @@ from .views import (
     RegisterView,
     ResourceDocumentDetailView,
     ResourceDocumentDownloadView,
+    TaskDetailView,
+    TaskListCreateView,
 )
 
 
@@ -62,5 +64,7 @@ urlpatterns = [
         ResourceDocumentDownloadView.as_view(),
         name="document_download",
     ),
+    path("tasks/", TaskListCreateView.as_view(), name="task_list"),
+    path("tasks/<int:pk>/", TaskDetailView.as_view(), name="task_detail"),
     path("invitations/accept/", InvitationAcceptView.as_view(), name="invitation_accept"),
 ]

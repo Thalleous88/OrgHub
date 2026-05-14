@@ -413,3 +413,69 @@ class ResourceDocument(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class Task(models.Model):
+    class Status(models.TextChoices):
+        TODO = "ToDo", "To Do"
+        IN_PROGRESS = "InProgress", "In Progress"
+        DONE = "Done", "Done"
+
+    division = models.ForeignKey(
+        Division,
+        on_delete=models.CASCADE,
+        related_name="tasks",
+        null=True,
+        blank=True,
+    )
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.CASCADE,
+        related_name="tasks",
+        null=True,
+        blank=True,
+    )
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.TODO,
+    )
+    due_at = models.DateTimeField(null=True, blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="created_tasks",
+    )
+    assigned_to = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="assigned_tasks",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["status", "due_at", "-created_at"]
+
+    @property
+    def scope_organization(self):
+        if self.division_id:
+            return self.division.organization
+        return self.project.division.organization
+
+    @property
+    def scope_division(self):
+        return self.division or self.project.division
+
+    def clean(self):
+        if bool(self.division_id) == bool(self.project_id):
+            raise ValidationError("Task must belong to exactly one division or project.")
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.title

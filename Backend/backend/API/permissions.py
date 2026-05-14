@@ -168,5 +168,13 @@ def can_delete_task(user, task):
     return task.created_by_id == user.id
 
 
+def can_access_announcement(user, announcement):
+    return is_organization_member(user, announcement.organization)
+
+
+def can_manage_announcement(user, announcement):
+    return is_core_board(user, announcement.organization)
+
+
 class IsAuthenticated(permissions.IsAuthenticated):
     pass

@@ -2,6 +2,7 @@ from django.contrib.auth import authenticate, get_user_model
 from rest_framework import serializers
 
 from .models import (
+    Announcement,
     Division,
     DivisionMembership,
     Invitation,
@@ -383,6 +384,47 @@ class ResourceDocumentSerializer(serializers.ModelSerializer):
         else:
             kwargs["project"] = scope
         return ResourceDocument.objects.create(**kwargs)
+
+
+class AnnouncementSerializer(serializers.ModelSerializer):
+    created_by_email = serializers.EmailField(source="created_by.email", read_only=True)
+
+    class Meta:
+        model = Announcement
+        fields = [
+            "id",
+            "organization",
+            "title",
+            "content",
+            "priority",
+            "created_by",
+            "created_by_email",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "organization",
+            "created_by",
+            "created_by_email",
+            "created_at",
+            "updated_at",
+        ]
+
+    def validate(self, attrs):
+        organization = self.context.get("organization")
+        if organization and not is_core_board(self.context["request"].user, organization):
+            raise serializers.ValidationError(
+                "Only Core Board can broadcast announcements."
+            )
+        return attrs
+
+    def create(self, validated_data):
+        return Announcement.objects.create(
+            organization=self.context["organization"],
+            created_by=self.context["request"].user,
+            **validated_data,
+        )
 
 
 class TaskSerializer(serializers.ModelSerializer):

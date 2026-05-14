@@ -1,6 +1,7 @@
 from django.contrib import admin
 
 from .models import (
+    Announcement,
     Division,
     DivisionMembership,
     Invitation,
@@ -23,4 +24,5 @@ admin.site.register(DivisionMembership)
 admin.site.register(ProjectMembership)
 admin.site.register(Invitation)
 admin.site.register(ResourceDocument)
+admin.site.register(Announcement)
 admin.site.register(Task)

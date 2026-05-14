@@ -9,6 +9,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from .models import (
+    Announcement,
     Division,
     DivisionMembership,
     Organization,
@@ -405,6 +406,142 @@ class ResourceDocumentAPITests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class AnnouncementAPITests(APITestCase):
+    def setUp(self):
+        self.core_user = User.objects.create_user(
+            username="core-announcements@example.com",
+            email="core-announcements@example.com",
+            password="Password123",
+        )
+        self.member_user = User.objects.create_user(
+            username="member-announcements@example.com",
+            email="member-announcements@example.com",
+            password="Password123",
+        )
+        self.outsider_user = User.objects.create_user(
+            username="outsider-announcements@example.com",
+            email="outsider-announcements@example.com",
+            password="Password123",
+        )
+        self.organization = Organization.objects.create(
+            name="Announcements Org",
+            created_by=self.core_user,
+        )
+        self.other_organization = Organization.objects.create(
+            name="Other Announcements Org",
+            created_by=self.outsider_user,
+        )
+        OrganizationMembership.objects.create(
+            organization=self.organization,
+            user=self.core_user,
+            role=OrganizationMembership.Role.CORE_BOARD,
+        )
+        OrganizationMembership.objects.create(
+            organization=self.organization,
+            user=self.member_user,
+            role=OrganizationMembership.Role.MEMBER,
+        )
+        OrganizationMembership.objects.create(
+            organization=self.other_organization,
+            user=self.outsider_user,
+            role=OrganizationMembership.Role.CORE_BOARD,
+        )
+
+    def test_core_board_can_broadcast_organization_announcement(self):
+        self.client.force_authenticate(self.core_user)
+
+        response = self.client.post(
+            reverse("organization_announcements", kwargs={"pk": self.organization.pk}),
+            {
+                "title": "Spring Innovation Summit",
+                "content": "Registration opens today.",
+                "priority": "HIGH",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        announcement = Announcement.objects.get(title="Spring Innovation Summit")
+        self.assertEqual(announcement.organization, self.organization)
+        self.assertEqual(announcement.created_by, self.core_user)
+
+    def test_member_can_read_but_not_create_announcement(self):
+        announcement = Announcement.objects.create(
+            organization=self.organization,
+            created_by=self.core_user,
+            title="Weekly Briefing",
+            content="Meeting at 5 PM.",
+        )
+        self.client.force_authenticate(self.member_user)
+
+        response = self.client.get(
+            reverse("announcement_detail", kwargs={"pk": announcement.pk})
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        response = self.client.post(
+            reverse("organization_announcements", kwargs={"pk": self.organization.pk}),
+            {"title": "Member Post", "content": "Not allowed."},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_announcement_feed_only_returns_membership_organizations(self):
+        visible_announcement = Announcement.objects.create(
+            organization=self.organization,
+            created_by=self.core_user,
+            title="Visible Update",
+            content="Shown in feed.",
+        )
+        Announcement.objects.create(
+            organization=self.other_organization,
+            created_by=self.outsider_user,
+            title="Hidden Update",
+            content="Not shown in feed.",
+        )
+
+        self.client.force_authenticate(self.member_user)
+        response = self.client.get(reverse("announcement_feed"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual([item["id"] for item in response.data], [visible_announcement.pk])
+
+    def test_outsider_cannot_read_announcement(self):
+        announcement = Announcement.objects.create(
+            organization=self.organization,
+            created_by=self.core_user,
+            title="Private Broadcast",
+            content="Members only.",
+        )
+
+        self.client.force_authenticate(self.outsider_user)
+        response = self.client.get(
+            reverse("announcement_detail", kwargs={"pk": announcement.pk})
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_only_core_board_can_delete_announcement(self):
+        announcement = Announcement.objects.create(
+            organization=self.organization,
+            created_by=self.core_user,
+            title="Delete Me",
+            content="Core Board only.",
+        )
+
+        self.client.force_authenticate(self.member_user)
+        response = self.client.delete(
+            reverse("announcement_detail", kwargs={"pk": announcement.pk})
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        self.client.force_authenticate(self.core_user)
+        response = self.client.delete(
+            reverse("announcement_detail", kwargs={"pk": announcement.pk})
+        )
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
 
 
 class TaskAPITests(APITestCase):

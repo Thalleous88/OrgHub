@@ -7,6 +7,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import (
+    Announcement,
     Division,
     DivisionMembership,
     Invitation,
@@ -18,13 +19,16 @@ from .models import (
     Task,
 )
 from .permissions import (
+    can_access_announcement,
     can_access_repository,
     can_access_resource_document,
     can_access_task,
+    can_manage_announcement,
     can_delete_resource_document,
     can_delete_task,
 )
 from .serializers import (
+    AnnouncementSerializer,
     DivisionSerializer,
     EmailTokenObtainPairSerializer,
     InvitationAcceptSerializer,
@@ -251,6 +255,59 @@ class ResourceDocumentDownloadView(APIView):
         if not can_access_resource_document(request.user, document):
             raise PermissionDenied("You do not have access to this document.")
         return FileResponse(document.file.open("rb"), as_attachment=True)
+
+
+class OrganizationAnnouncementListCreateView(generics.ListCreateAPIView):
+    serializer_class = AnnouncementSerializer
+
+    def get_organization(self):
+        return generics.get_object_or_404(Organization, pk=self.kwargs["pk"])
+
+    def get_queryset(self):
+        organization = self.get_organization()
+        if not OrganizationMembership.objects.filter(
+            organization=organization,
+            user=self.request.user,
+            is_active=True,
+        ).exists():
+            raise PermissionDenied("You do not have access to these announcements.")
+        return Announcement.objects.filter(organization=organization).select_related(
+            "organization",
+            "created_by",
+        )
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["organization"] = self.get_organization()
+        return context
+
+
+class AnnouncementFeedView(generics.ListAPIView):
+    serializer_class = AnnouncementSerializer
+
+    def get_queryset(self):
+        return Announcement.objects.filter(
+            organization__memberships__user=self.request.user,
+            organization__memberships__is_active=True,
+        ).select_related("organization", "created_by").distinct()
+
+
+class AnnouncementDetailView(generics.RetrieveDestroyAPIView):
+    serializer_class = AnnouncementSerializer
+    queryset = Announcement.objects.select_related("organization", "created_by")
+
+    def get_object(self):
+        announcement = super().get_object()
+        if not can_access_announcement(self.request.user, announcement):
+            raise PermissionDenied("You do not have access to this announcement.")
+        return announcement
+
+    def perform_destroy(self, instance):
+        if not can_manage_announcement(self.request.user, instance):
+            raise PermissionDenied(
+                "You do not have permission to delete this announcement."
+            )
+        instance.delete()
 
 
 class TaskListCreateView(generics.ListCreateAPIView):

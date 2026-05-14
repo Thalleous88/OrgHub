@@ -1,12 +1,15 @@
 from django.urls import path
 
 from .views import (
+    AnnouncementDetailView,
+    AnnouncementFeedView,
     CurrentUserView,
     DivisionDocumentListCreateView,
     DivisionInvitationCreateView,
     DivisionListCreateView,
     InvitationAcceptView,
     LoginView,
+    OrganizationAnnouncementListCreateView,
     OrganizationDocumentListCreateView,
     OrganizationInvitationCreateView,
     OrganizationListCreateView,
@@ -35,6 +38,11 @@ urlpatterns = [
         "organizations/<int:pk>/documents/",
         OrganizationDocumentListCreateView.as_view(),
         name="organization_documents",
+    ),
+    path(
+        "organizations/<int:pk>/announcements/",
+        OrganizationAnnouncementListCreateView.as_view(),
+        name="organization_announcements",
     ),
     path("divisions/", DivisionListCreateView.as_view(), name="division_list"),
     path(
@@ -66,5 +74,11 @@ urlpatterns = [
     ),
     path("tasks/", TaskListCreateView.as_view(), name="task_list"),
     path("tasks/<int:pk>/", TaskDetailView.as_view(), name="task_detail"),
+    path("announcements/", AnnouncementFeedView.as_view(), name="announcement_feed"),
+    path(
+        "announcements/<int:pk>/",
+        AnnouncementDetailView.as_view(),
+        name="announcement_detail",
+    ),
     path("invitations/accept/", InvitationAcceptView.as_view(), name="invitation_accept"),
 ]

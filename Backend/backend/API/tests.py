@@ -71,6 +71,63 @@ class AuthAPITests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
+    def test_profile_update_requires_authentication(self):
+        response = self.client.patch(
+            reverse("current_user_profile"),
+            {"full_name": "Unauthenticated User"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_user_can_read_and_update_own_profile(self):
+        user = User.objects.create_user(
+            username="profile@example.com",
+            email="profile@example.com",
+            password="Password123",
+        )
+        Profile.objects.create(user=user, full_name="Old Name")
+        self.client.force_authenticate(user)
+
+        response = self.client.get(reverse("current_user_profile"))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["full_name"], "Old Name")
+
+        response = self.client.patch(
+            reverse("current_user_profile"),
+            {
+                "full_name": "Alex Johnson",
+                "major": "Computer Science",
+                "campus_location": "Alam Sutera",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["full_name"], "Alex Johnson")
+        self.assertEqual(response.data["major"], "Computer Science")
+        self.assertEqual(response.data["campus_location"], "Alam Sutera")
+
+        user.profile.refresh_from_db()
+        self.assertEqual(user.profile.full_name, "Alex Johnson")
+
+    def test_profile_endpoint_creates_missing_profile_for_current_user(self):
+        user = User.objects.create_user(
+            username="missing-profile@example.com",
+            email="missing-profile@example.com",
+            password="Password123",
+        )
+        self.client.force_authenticate(user)
+
+        response = self.client.patch(
+            reverse("current_user_profile"),
+            {"full_name": "New Profile"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(Profile.objects.filter(user=user, full_name="New Profile").exists())
+
 
 class MembershipAPITests(APITestCase):
     def setUp(self):

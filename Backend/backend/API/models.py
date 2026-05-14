@@ -523,6 +523,80 @@ class CalendarEvent(models.Model):
         return self.title
 
 
+class Notification(models.Model):
+    class NotificationType(models.TextChoices):
+        TASK_REMINDER = "TASK_REMINDER", "Task Reminder"
+        EVENT_REMINDER = "EVENT_REMINDER", "Event Reminder"
+        ANNOUNCEMENT = "ANNOUNCEMENT", "Announcement"
+
+    recipient = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="notifications",
+    )
+    notification_type = models.CharField(max_length=30, choices=NotificationType.choices)
+    title = models.CharField(max_length=255)
+    message = models.TextField()
+    task = models.ForeignKey(
+        "Task",
+        on_delete=models.CASCADE,
+        related_name="notifications",
+        null=True,
+        blank=True,
+    )
+    calendar_event = models.ForeignKey(
+        CalendarEvent,
+        on_delete=models.CASCADE,
+        related_name="notifications",
+        null=True,
+        blank=True,
+    )
+    is_read = models.BooleanField(default=False)
+    read_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["recipient", "task", "notification_type"],
+                condition=models.Q(task__isnull=False),
+                name="unique_task_reminder_notification",
+            ),
+            models.UniqueConstraint(
+                fields=["recipient", "calendar_event", "notification_type"],
+                condition=models.Q(calendar_event__isnull=False),
+                name="unique_event_reminder_notification",
+            ),
+        ]
+
+    def clean(self):
+        references = [self.task_id, self.calendar_event_id]
+        if sum(reference is not None for reference in references) > 1:
+            raise ValidationError("Notification can reference at most one source object.")
+        if self.notification_type == self.NotificationType.TASK_REMINDER and not self.task_id:
+            raise ValidationError("Task reminders must reference a task.")
+        if (
+            self.notification_type == self.NotificationType.EVENT_REMINDER
+            and not self.calendar_event_id
+        ):
+            raise ValidationError("Event reminders must reference a calendar event.")
+
+    def mark_read(self):
+        if not self.is_read:
+            self.is_read = True
+            self.read_at = timezone.now()
+            self.save(update_fields=["is_read", "read_at", "updated_at"])
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.recipient.email} - {self.title}"
+
+
 class Task(models.Model):
     class Status(models.TextChoices):
         TODO = "ToDo", "To Do"

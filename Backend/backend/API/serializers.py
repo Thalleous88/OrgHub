@@ -7,6 +7,7 @@ from .models import (
     Division,
     DivisionMembership,
     Invitation,
+    Notification,
     Organization,
     OrganizationMembership,
     Profile,
@@ -491,6 +492,40 @@ class CalendarEventSerializer(serializers.ModelSerializer):
         else:
             kwargs["project"] = scope
         return CalendarEvent.objects.create(**kwargs)
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = [
+            "id",
+            "notification_type",
+            "title",
+            "message",
+            "task",
+            "calendar_event",
+            "is_read",
+            "read_at",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "notification_type",
+            "title",
+            "message",
+            "task",
+            "calendar_event",
+            "read_at",
+            "created_at",
+            "updated_at",
+        ]
+
+    def update(self, instance, validated_data):
+        if validated_data.get("is_read"):
+            instance.mark_read()
+            return instance
+        return instance
 
 
 class TaskSerializer(serializers.ModelSerializer):

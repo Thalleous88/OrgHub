@@ -14,6 +14,7 @@ from .models import (
     Invitation,
     Organization,
     OrganizationMembership,
+    Notification,
     Profile,
     Project,
     ProjectMembership,
@@ -39,6 +40,7 @@ from .serializers import (
     InvitationAcceptSerializer,
     InvitationCreateSerializer,
     InvitationSerializer,
+    NotificationSerializer,
     OrganizationSerializer,
     ProfileSerializer,
     ProjectSerializer,
@@ -237,6 +239,11 @@ class DashboardView(APIView):
                         "created_by",
                     )
                     .distinct()[:10],
+                    many=True,
+                    context={"request": request},
+                ).data,
+                "notifications": NotificationSerializer(
+                    Notification.objects.filter(recipient=user)[:10],
                     many=True,
                     context={"request": request},
                 ).data,
@@ -652,6 +659,39 @@ class CalendarEventDetailView(generics.RetrieveUpdateDestroyAPIView):
         if not can_manage_calendar_event(self.request.user, instance):
             raise PermissionDenied("You do not have permission to delete this event.")
         instance.delete()
+
+
+class NotificationListView(generics.ListAPIView):
+    serializer_class = NotificationSerializer
+
+    def get_queryset(self):
+        queryset = Notification.objects.filter(recipient=self.request.user).select_related(
+            "task",
+            "calendar_event",
+        )
+        is_read = self.request.query_params.get("is_read")
+        if is_read == "true":
+            queryset = queryset.filter(is_read=True)
+        if is_read == "false":
+            queryset = queryset.filter(is_read=False)
+        return queryset
+
+
+class NotificationDetailView(generics.RetrieveUpdateAPIView):
+    serializer_class = NotificationSerializer
+
+    def get_queryset(self):
+        return Notification.objects.filter(recipient=self.request.user).select_related(
+            "task",
+            "calendar_event",
+        )
+
+
+class NotificationMarkAllReadView(APIView):
+    def post(self, request):
+        for notification in Notification.objects.filter(recipient=request.user, is_read=False):
+            notification.mark_read()
+        return Response({"detail": "Notifications marked as read."})
 
 
 class TaskListCreateView(generics.ListCreateAPIView):

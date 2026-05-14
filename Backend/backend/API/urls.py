@@ -14,6 +14,9 @@ from .views import (
     DivisionListCreateView,
     InvitationAcceptView,
     LoginView,
+    NotificationDetailView,
+    NotificationListView,
+    NotificationMarkAllReadView,
     OrganizationAnnouncementListCreateView,
     OrganizationCalendarEventListCreateView,
     OrganizationDocumentListCreateView,
@@ -104,6 +107,17 @@ urlpatterns = [
     ),
     path("tasks/", TaskListCreateView.as_view(), name="task_list"),
     path("tasks/<int:pk>/", TaskDetailView.as_view(), name="task_detail"),
+    path("notifications/", NotificationListView.as_view(), name="notification_list"),
+    path(
+        "notifications/mark-all-read/",
+        NotificationMarkAllReadView.as_view(),
+        name="notification_mark_all_read",
+    ),
+    path(
+        "notifications/<int:pk>/",
+        NotificationDetailView.as_view(),
+        name="notification_detail",
+    ),
     path("announcements/", AnnouncementFeedView.as_view(), name="announcement_feed"),
     path(
         "announcements/<int:pk>/",

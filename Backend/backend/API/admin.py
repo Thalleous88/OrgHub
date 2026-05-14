@@ -6,6 +6,7 @@ from .models import (
     Division,
     DivisionMembership,
     Invitation,
+    Notification,
     Organization,
     OrganizationMembership,
     Profile,
@@ -27,4 +28,5 @@ admin.site.register(Invitation)
 admin.site.register(ResourceDocument)
 admin.site.register(Announcement)
 admin.site.register(CalendarEvent)
+admin.site.register(Notification)
 admin.site.register(Task)

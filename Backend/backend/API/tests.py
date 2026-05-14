@@ -1,9 +1,11 @@
 import shutil
 import tempfile
 from datetime import timedelta
+from io import StringIO
 
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.management import call_command
 from django.test import override_settings
 from django.urls import reverse
 from django.utils import timezone
@@ -16,6 +18,7 @@ from .models import (
     Division,
     DivisionMembership,
     Invitation,
+    Notification,
     Organization,
     OrganizationMembership,
     Profile,
@@ -854,6 +857,183 @@ class CalendarEventAPITests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class NotificationAPITests(APITestCase):
+    def setUp(self):
+        self.core_user = User.objects.create_user(
+            username="core-notifications@example.com",
+            email="core-notifications@example.com",
+            password="Password123",
+        )
+        self.member_user = User.objects.create_user(
+            username="member-notifications@example.com",
+            email="member-notifications@example.com",
+            password="Password123",
+        )
+        self.outsider_user = User.objects.create_user(
+            username="outsider-notifications@example.com",
+            email="outsider-notifications@example.com",
+            password="Password123",
+        )
+        self.organization = Organization.objects.create(
+            name="Notification Org",
+            created_by=self.core_user,
+        )
+        self.division = Division.objects.create(
+            organization=self.organization,
+            name="Notification Division",
+        )
+        self.project = Project.objects.create(
+            division=self.division,
+            name="Notification Project",
+        )
+        for user in [self.core_user, self.member_user]:
+            OrganizationMembership.objects.create(
+                organization=self.organization,
+                user=user,
+                role=(
+                    OrganizationMembership.Role.CORE_BOARD
+                    if user == self.core_user
+                    else OrganizationMembership.Role.MEMBER
+                ),
+            )
+            DivisionMembership.objects.create(
+                division=self.division,
+                user=user,
+                role=DivisionMembership.Role.MEMBER,
+            )
+            ProjectMembership.objects.create(
+                project=self.project,
+                user=user,
+                role=ProjectMembership.Role.MEMBER,
+            )
+
+    def test_generate_reminders_creates_task_and_event_notifications(self):
+        task = Task.objects.create(
+            project=self.project,
+            title="Submit report",
+            due_at=timezone.now() + timedelta(hours=2),
+            created_by=self.core_user,
+            assigned_to=self.member_user,
+        )
+        event = CalendarEvent.objects.create(
+            organization=self.organization,
+            created_by=self.core_user,
+            title="General Meeting",
+            event_type=CalendarEvent.EventType.MEETING,
+            starts_at=timezone.now() + timedelta(hours=3),
+        )
+
+        output = StringIO()
+        call_command("generate_reminders", stdout=output)
+
+        self.assertIn("Created 3 reminder notification(s).", output.getvalue())
+        self.assertTrue(
+            Notification.objects.filter(
+                recipient=self.member_user,
+                task=task,
+                notification_type=Notification.NotificationType.TASK_REMINDER,
+            ).exists()
+        )
+        self.assertEqual(
+            Notification.objects.filter(
+                calendar_event=event,
+                notification_type=Notification.NotificationType.EVENT_REMINDER,
+            ).count(),
+            2,
+        )
+
+        output = StringIO()
+        call_command("generate_reminders", stdout=output)
+        self.assertIn("Created 0 reminder notification(s).", output.getvalue())
+
+    def test_generate_reminders_ignores_done_tasks_and_later_events(self):
+        Task.objects.create(
+            project=self.project,
+            title="Completed report",
+            status=Task.Status.DONE,
+            due_at=timezone.now() + timedelta(hours=2),
+            created_by=self.core_user,
+            assigned_to=self.member_user,
+        )
+        CalendarEvent.objects.create(
+            organization=self.organization,
+            created_by=self.core_user,
+            title="Later Meeting",
+            starts_at=timezone.now() + timedelta(days=3),
+        )
+
+        call_command("generate_reminders", stdout=StringIO())
+
+        self.assertFalse(Notification.objects.exists())
+
+    def test_user_can_list_and_mark_own_notifications_read(self):
+        notification = Notification.objects.create(
+            recipient=self.member_user,
+            notification_type=Notification.NotificationType.TASK_REMINDER,
+            task=Task.objects.create(
+                project=self.project,
+                title="Read notification task",
+                due_at=timezone.now() + timedelta(hours=2),
+                created_by=self.core_user,
+                assigned_to=self.member_user,
+            ),
+            title="Task due soon",
+            message="Read this notification.",
+        )
+        Notification.objects.create(
+            recipient=self.outsider_user,
+            notification_type=Notification.NotificationType.ANNOUNCEMENT,
+            title="Other user notification",
+            message="Hidden.",
+        )
+        self.client.force_authenticate(self.member_user)
+
+        response = self.client.get(reverse("notification_list"))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual([item["id"] for item in response.data], [notification.pk])
+
+        response = self.client.patch(
+            reverse("notification_detail", kwargs={"pk": notification.pk}),
+            {"is_read": True},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        notification.refresh_from_db()
+        self.assertTrue(notification.is_read)
+        self.assertIsNotNone(notification.read_at)
+
+    def test_user_can_mark_all_notifications_read(self):
+        for index in range(2):
+            Notification.objects.create(
+                recipient=self.member_user,
+                notification_type=Notification.NotificationType.ANNOUNCEMENT,
+                title=f"Notification {index}",
+                message="Unread.",
+            )
+        self.client.force_authenticate(self.member_user)
+
+        response = self.client.post(reverse("notification_mark_all_read"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(
+            Notification.objects.filter(recipient=self.member_user, is_read=False).exists()
+        )
+
+    def test_user_cannot_read_another_users_notification(self):
+        notification = Notification.objects.create(
+            recipient=self.member_user,
+            notification_type=Notification.NotificationType.ANNOUNCEMENT,
+            title="Private Notification",
+            message="Members only.",
+        )
+        self.client.force_authenticate(self.outsider_user)
+
+        response = self.client.get(reverse("notification_detail", kwargs={"pk": notification.pk}))
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
 
 @override_settings(MEDIA_ROOT=TEST_MEDIA_ROOT)

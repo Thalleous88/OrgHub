@@ -9,6 +9,7 @@ from .models import (
     Profile,
     Project,
     ProjectMembership,
+    ResourceDocument,
 )
 
 
@@ -20,3 +21,4 @@ admin.site.register(OrganizationMembership)
 admin.site.register(DivisionMembership)
 admin.site.register(ProjectMembership)
 admin.site.register(Invitation)
+admin.site.register(ResourceDocument)

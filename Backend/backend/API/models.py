@@ -1,9 +1,27 @@
 import uuid
+from pathlib import Path
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
+
+
+ALLOWED_RESOURCE_EXTENSIONS = {".docx", ".xlsx", ".pptx", ".pdf"}
+MAX_RESOURCE_FILE_SIZE = 100 * 1024 * 1024
+
+
+def resource_document_upload_path(instance, filename):
+    scope = instance.repository_scope
+    return f"resources/{scope}/{instance.repository_id}/{filename}"
+
+
+def validate_resource_file(file):
+    extension = Path(file.name).suffix.lower()
+    if extension not in ALLOWED_RESOURCE_EXTENSIONS:
+        raise ValidationError("Resource files must be .docx, .xlsx, .pptx, or .pdf.")
+    if file.size > MAX_RESOURCE_FILE_SIZE:
+        raise ValidationError("Resource files must be 100MB or smaller.")
 
 
 class Profile(models.Model):
@@ -329,4 +347,69 @@ class Invitation(models.Model):
     def __str__(self):
         return f"{self.email} - {self.role} ({self.status})"
 
-# Create your models here.
+
+class ResourceDocument(models.Model):
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="resource_documents",
+        null=True,
+        blank=True,
+    )
+    division = models.ForeignKey(
+        Division,
+        on_delete=models.CASCADE,
+        related_name="resource_documents",
+        null=True,
+        blank=True,
+    )
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.CASCADE,
+        related_name="resource_documents",
+        null=True,
+        blank=True,
+    )
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="uploaded_resource_documents",
+    )
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    file = models.FileField(
+        upload_to=resource_document_upload_path,
+        validators=[validate_resource_file],
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    @property
+    def repository_scope(self):
+        if self.organization_id:
+            return "organizations"
+        if self.division_id:
+            return "divisions"
+        return "projects"
+
+    @property
+    def repository_id(self):
+        return self.organization_id or self.division_id or self.project_id
+
+    def clean(self):
+        scopes = [self.organization_id, self.division_id, self.project_id]
+        if sum(scope is not None for scope in scopes) != 1:
+            raise ValidationError("Resource document must belong to exactly one repository.")
+
+        if self.file:
+            validate_resource_file(self.file)
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.title

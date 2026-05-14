@@ -1,5 +1,7 @@
+from django.http import FileResponse
 from django.db.models import Q
 from rest_framework import generics, permissions
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -11,6 +13,12 @@ from .models import (
     Organization,
     OrganizationMembership,
     Project,
+    ResourceDocument,
+)
+from .permissions import (
+    can_access_repository,
+    can_access_resource_document,
+    can_delete_resource_document,
 )
 from .serializers import (
     DivisionSerializer,
@@ -21,6 +29,7 @@ from .serializers import (
     OrganizationSerializer,
     ProjectSerializer,
     RegisterSerializer,
+    ResourceDocumentSerializer,
     UserSerializer,
 )
 
@@ -158,3 +167,82 @@ class InvitationAcceptView(APIView):
         serializer.is_valid(raise_exception=True)
         invitation = serializer.save()
         return Response(InvitationSerializer(invitation).data)
+
+
+class RepositoryDocumentListCreateView(generics.ListCreateAPIView):
+    serializer_class = ResourceDocumentSerializer
+    scope_model = None
+    scope_url_kwarg = "pk"
+
+    def get_scope(self):
+        return generics.get_object_or_404(
+            self.scope_model,
+            pk=self.kwargs[self.scope_url_kwarg],
+        )
+
+    def check_scope_permission(self):
+        scope = self.get_scope()
+        if not can_access_repository(self.request.user, scope):
+            raise PermissionDenied("You do not have access to this repository.")
+        return scope
+
+    def get_queryset(self):
+        scope = self.check_scope_permission()
+        if isinstance(scope, Organization):
+            return ResourceDocument.objects.filter(organization=scope)
+        if isinstance(scope, Division):
+            return ResourceDocument.objects.filter(division=scope)
+        return ResourceDocument.objects.filter(project=scope)
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["scope"] = self.get_scope()
+        return context
+
+
+class OrganizationDocumentListCreateView(RepositoryDocumentListCreateView):
+    scope_model = Organization
+
+
+class DivisionDocumentListCreateView(RepositoryDocumentListCreateView):
+    scope_model = Division
+
+
+class ProjectDocumentListCreateView(RepositoryDocumentListCreateView):
+    scope_model = Project
+
+
+class ResourceDocumentDetailView(generics.RetrieveDestroyAPIView):
+    serializer_class = ResourceDocumentSerializer
+    queryset = ResourceDocument.objects.select_related(
+        "organization",
+        "division__organization",
+        "project__division__organization",
+        "uploaded_by",
+    )
+
+    def get_object(self):
+        document = super().get_object()
+        if not can_access_resource_document(self.request.user, document):
+            raise PermissionDenied("You do not have access to this document.")
+        return document
+
+    def perform_destroy(self, instance):
+        if not can_delete_resource_document(self.request.user, instance):
+            raise PermissionDenied("You do not have permission to delete this document.")
+        instance.delete()
+
+
+class ResourceDocumentDownloadView(APIView):
+    def get(self, request, pk):
+        document = generics.get_object_or_404(
+            ResourceDocument.objects.select_related(
+                "organization",
+                "division__organization",
+                "project__division__organization",
+            ),
+            pk=pk,
+        )
+        if not can_access_resource_document(request.user, document):
+            raise PermissionDenied("You do not have access to this document.")
+        return FileResponse(document.file.open("rb"), as_attachment=True)

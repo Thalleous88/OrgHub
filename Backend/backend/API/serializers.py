@@ -10,8 +10,14 @@ from .models import (
     Profile,
     Project,
     ProjectMembership,
+    ResourceDocument,
 )
-from .permissions import can_manage_division, can_manage_project_members, is_core_board
+from .permissions import (
+    can_manage_division,
+    can_manage_project_members,
+    can_upload_resource_document,
+    is_core_board,
+)
 
 
 User = get_user_model()
@@ -308,3 +314,69 @@ class InvitationAcceptSerializer(serializers.Serializer):
         invitation = self.validated_data["token"]
         invitation.accept(self.context["request"].user)
         return invitation
+
+
+class ResourceDocumentSerializer(serializers.ModelSerializer):
+    file_url = serializers.SerializerMethodField()
+    repository_scope = serializers.CharField(read_only=True)
+    repository_id = serializers.IntegerField(read_only=True)
+    uploaded_by_email = serializers.EmailField(source="uploaded_by.email", read_only=True)
+
+    class Meta:
+        model = ResourceDocument
+        fields = [
+            "id",
+            "title",
+            "description",
+            "file",
+            "file_url",
+            "repository_scope",
+            "repository_id",
+            "organization",
+            "division",
+            "project",
+            "uploaded_by",
+            "uploaded_by_email",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "file_url",
+            "repository_scope",
+            "repository_id",
+            "organization",
+            "division",
+            "project",
+            "uploaded_by",
+            "uploaded_by_email",
+            "created_at",
+            "updated_at",
+        ]
+
+    def get_file_url(self, obj):
+        request = self.context.get("request")
+        if not obj.file:
+            return None
+        if request is None:
+            return obj.file.url
+        return request.build_absolute_uri(obj.file.url)
+
+    def validate(self, attrs):
+        scope = self.context.get("scope")
+        if scope and not can_upload_resource_document(self.context["request"].user, scope):
+            raise serializers.ValidationError(
+                "You do not have permission to upload to this repository."
+            )
+        return attrs
+
+    def create(self, validated_data):
+        scope = self.context["scope"]
+        kwargs = {"uploaded_by": self.context["request"].user, **validated_data}
+        if isinstance(scope, Organization):
+            kwargs["organization"] = scope
+        elif isinstance(scope, Division):
+            kwargs["division"] = scope
+        else:
+            kwargs["project"] = scope
+        return ResourceDocument.objects.create(**kwargs)

@@ -1,4 +1,9 @@
+import shutil
+import tempfile
+
 from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import override_settings
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
@@ -11,10 +16,16 @@ from .models import (
     Profile,
     Project,
     ProjectMembership,
+    ResourceDocument,
 )
 
 
 User = get_user_model()
+TEST_MEDIA_ROOT = tempfile.mkdtemp()
+
+
+def tearDownModule():
+    shutil.rmtree(TEST_MEDIA_ROOT, ignore_errors=True)
 
 
 class AuthAPITests(APITestCase):
@@ -243,3 +254,153 @@ class MembershipAPITests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+
+@override_settings(MEDIA_ROOT=TEST_MEDIA_ROOT)
+class ResourceDocumentAPITests(APITestCase):
+    def setUp(self):
+        self.core_user = User.objects.create_user(
+            username="core-docs@example.com",
+            email="core-docs@example.com",
+            password="Password123",
+        )
+        self.member_user = User.objects.create_user(
+            username="member-docs@example.com",
+            email="member-docs@example.com",
+            password="Password123",
+        )
+        self.outsider_user = User.objects.create_user(
+            username="outsider@example.com",
+            email="outsider@example.com",
+            password="Password123",
+        )
+        self.project_lead_user = User.objects.create_user(
+            username="lead-docs@example.com",
+            email="lead-docs@example.com",
+            password="Password123",
+        )
+        self.organization = Organization.objects.create(
+            name="Docs Org",
+            created_by=self.core_user,
+        )
+        self.division = Division.objects.create(
+            organization=self.organization,
+            name="Education",
+        )
+        self.project = Project.objects.create(
+            division=self.division,
+            name="Workshop",
+        )
+        OrganizationMembership.objects.create(
+            organization=self.organization,
+            user=self.core_user,
+            role=OrganizationMembership.Role.CORE_BOARD,
+        )
+        OrganizationMembership.objects.create(
+            organization=self.organization,
+            user=self.member_user,
+            role=OrganizationMembership.Role.MEMBER,
+        )
+        OrganizationMembership.objects.create(
+            organization=self.organization,
+            user=self.project_lead_user,
+            role=OrganizationMembership.Role.MEMBER,
+        )
+        DivisionMembership.objects.create(
+            division=self.division,
+            user=self.member_user,
+            role=DivisionMembership.Role.MEMBER,
+        )
+        DivisionMembership.objects.create(
+            division=self.division,
+            user=self.project_lead_user,
+            role=DivisionMembership.Role.MEMBER,
+        )
+        ProjectMembership.objects.create(
+            project=self.project,
+            user=self.project_lead_user,
+            role=ProjectMembership.Role.PROJECT_LEAD,
+        )
+
+    def upload_file(self, name="guide.pdf"):
+        return SimpleUploadedFile(
+            name,
+            b"document contents",
+            content_type="application/pdf",
+        )
+
+    def test_core_board_can_upload_org_document_and_member_can_read(self):
+        self.client.force_authenticate(self.core_user)
+        response = self.client.post(
+            reverse("organization_documents", kwargs={"pk": self.organization.pk}),
+            {
+                "title": "Org Handbook",
+                "description": "Global docs",
+                "file": self.upload_file(),
+            },
+            format="multipart",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        document = ResourceDocument.objects.get(title="Org Handbook")
+        self.assertEqual(document.organization, self.organization)
+
+        self.client.force_authenticate(self.member_user)
+        response = self.client.get(reverse("document_detail", kwargs={"pk": document.pk}))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_org_member_cannot_upload_org_document(self):
+        self.client.force_authenticate(self.member_user)
+
+        response = self.client.post(
+            reverse("organization_documents", kwargs={"pk": self.organization.pk}),
+            {"title": "Notes", "file": self.upload_file("notes.pdf")},
+            format="multipart",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_division_document_requires_division_access(self):
+        document = ResourceDocument.objects.create(
+            division=self.division,
+            uploaded_by=self.core_user,
+            title="Division Plan",
+            file=self.upload_file("division.pdf"),
+        )
+
+        self.client.force_authenticate(self.member_user)
+        response = self.client.get(reverse("document_detail", kwargs={"pk": document.pk}))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.client.force_authenticate(self.outsider_user)
+        response = self.client.get(reverse("document_detail", kwargs={"pk": document.pk}))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_project_lead_can_upload_project_document_and_division_member_cannot_read(self):
+        self.client.force_authenticate(self.project_lead_user)
+        response = self.client.post(
+            reverse("project_documents", kwargs={"pk": self.project.pk}),
+            {"title": "Workshop Slides", "file": self.upload_file("slides.pdf")},
+            format="multipart",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        document = ResourceDocument.objects.get(title="Workshop Slides")
+
+        self.client.force_authenticate(self.member_user)
+        response = self.client.get(reverse("document_detail", kwargs={"pk": document.pk}))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_rejects_unsupported_file_type(self):
+        self.client.force_authenticate(self.core_user)
+        response = self.client.post(
+            reverse("organization_documents", kwargs={"pk": self.organization.pk}),
+            {
+                "title": "Bad File",
+                "file": SimpleUploadedFile("bad.txt", b"text", content_type="text/plain"),
+            },
+            format="multipart",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

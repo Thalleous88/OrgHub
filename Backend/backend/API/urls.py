@@ -4,6 +4,7 @@ from .views import (
     AnnouncementDetailView,
     AnnouncementFeedView,
     CurrentUserView,
+    DashboardView,
     DivisionDocumentListCreateView,
     DivisionInvitationCreateView,
     DivisionListCreateView,
@@ -28,6 +29,7 @@ urlpatterns = [
     path("auth/register/", RegisterView.as_view(), name="register"),
     path("auth/login/", LoginView.as_view(), name="login"),
     path("auth/me/", CurrentUserView.as_view(), name="current_user"),
+    path("dashboard/", DashboardView.as_view(), name="dashboard"),
     path("organizations/", OrganizationListCreateView.as_view(), name="organization_list"),
     path(
         "organizations/<int:pk>/invite/",

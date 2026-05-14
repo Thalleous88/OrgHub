@@ -88,6 +88,219 @@ class CurrentUserView(generics.RetrieveAPIView):
         return self.request.user
 
 
+class DashboardView(APIView):
+    def get(self, request):
+        user = request.user
+        profile = getattr(user, "profile", None)
+        memberships = UserSerializer(user, context={"request": request}).data["memberships"]
+
+        task_queryset = Task.objects.select_related(
+            "division__organization",
+            "project__division__organization",
+            "created_by",
+            "assigned_to",
+        )
+        managed_task_filter = (
+            Q(
+                division__memberships__user=user,
+                division__memberships__role=DivisionMembership.Role.DIVISION_HEAD,
+                division__memberships__is_active=True,
+            )
+            | Q(
+                division__organization__memberships__user=user,
+                division__organization__memberships__role=OrganizationMembership.Role.CORE_BOARD,
+                division__organization__memberships__is_active=True,
+            )
+            | Q(
+                project__memberships__user=user,
+                project__memberships__role=ProjectMembership.Role.PROJECT_LEAD,
+                project__memberships__is_active=True,
+            )
+            | Q(
+                project__division__memberships__user=user,
+                project__division__memberships__role=DivisionMembership.Role.DIVISION_HEAD,
+                project__division__memberships__is_active=True,
+            )
+            | Q(
+                project__division__organization__memberships__user=user,
+                project__division__organization__memberships__role=OrganizationMembership.Role.CORE_BOARD,
+                project__division__organization__memberships__is_active=True,
+            )
+        )
+
+        visible_document_filter = (
+            Q(
+                organization__memberships__user=user,
+                organization__memberships__is_active=True,
+            )
+            | Q(
+                division__organization__memberships__user=user,
+                division__organization__memberships__role=OrganizationMembership.Role.CORE_BOARD,
+                division__organization__memberships__is_active=True,
+            )
+            | Q(
+                division__memberships__user=user,
+                division__memberships__is_active=True,
+            )
+            | Q(
+                project__division__organization__memberships__user=user,
+                project__division__organization__memberships__role=OrganizationMembership.Role.CORE_BOARD,
+                project__division__organization__memberships__is_active=True,
+            )
+            | Q(
+                project__division__memberships__user=user,
+                project__division__memberships__role=DivisionMembership.Role.DIVISION_HEAD,
+                project__division__memberships__is_active=True,
+            )
+            | Q(
+                project__memberships__user=user,
+                project__memberships__is_active=True,
+            )
+        )
+
+        core_organization_memberships = OrganizationMembership.objects.filter(
+            user=user,
+            role=OrganizationMembership.Role.CORE_BOARD,
+            is_active=True,
+        ).select_related("organization")
+        division_head_memberships = DivisionMembership.objects.filter(
+            user=user,
+            role=DivisionMembership.Role.DIVISION_HEAD,
+            is_active=True,
+        ).select_related("division__organization")
+        project_lead_memberships = ProjectMembership.objects.filter(
+            user=user,
+            role=ProjectMembership.Role.PROJECT_LEAD,
+            is_active=True,
+        ).select_related("project__division__organization")
+
+        return Response(
+            {
+                "profile": {
+                    "id": user.id,
+                    "email": user.email,
+                    "full_name": getattr(profile, "full_name", ""),
+                    "major": getattr(profile, "major", ""),
+                    "campus_location": getattr(profile, "campus_location", ""),
+                },
+                "memberships": memberships,
+                "tasks": {
+                    "assigned_to_me": TaskSerializer(
+                        task_queryset.filter(assigned_to=user)[:10],
+                        many=True,
+                        context={"request": request},
+                    ).data,
+                    "created_by_me": TaskSerializer(
+                        task_queryset.filter(created_by=user)[:10],
+                        many=True,
+                        context={"request": request},
+                    ).data,
+                    "managed": TaskSerializer(
+                        task_queryset.filter(managed_task_filter)
+                        .exclude(assigned_to=user)
+                        .exclude(status=Task.Status.DONE)
+                        .distinct()[:10],
+                        many=True,
+                        context={"request": request},
+                    ).data,
+                },
+                "announcements": AnnouncementSerializer(
+                    Announcement.objects.filter(
+                        organization__memberships__user=user,
+                        organization__memberships__is_active=True,
+                    )
+                    .select_related("organization", "created_by")
+                    .distinct()[:10],
+                    many=True,
+                    context={"request": request},
+                ).data,
+                "documents": ResourceDocumentSerializer(
+                    ResourceDocument.objects.filter(visible_document_filter)
+                    .select_related(
+                        "organization",
+                        "division__organization",
+                        "project__division__organization",
+                        "uploaded_by",
+                    )
+                    .distinct()[:10],
+                    many=True,
+                    context={"request": request},
+                ).data,
+                "pending_invitations": InvitationSerializer(
+                    Invitation.objects.filter(
+                        email__iexact=user.email,
+                        status=Invitation.Status.PENDING,
+                    ).select_related(
+                        "organization",
+                        "division__organization",
+                        "project__division__organization",
+                        "invited_by",
+                        "accepted_by",
+                    ),
+                    many=True,
+                    context={"request": request},
+                ).data,
+                "management_summary": {
+                    "organizations": [
+                        {
+                            "id": membership.organization_id,
+                            "name": membership.organization.name,
+                            "divisions_count": Division.objects.filter(
+                                organization=membership.organization,
+                            ).count(),
+                            "projects_count": Project.objects.filter(
+                                division__organization=membership.organization,
+                            ).count(),
+                            "open_tasks_count": Task.objects.filter(
+                                Q(division__organization=membership.organization)
+                                | Q(project__division__organization=membership.organization),
+                            )
+                            .exclude(status=Task.Status.DONE)
+                            .distinct()
+                            .count(),
+                        }
+                        for membership in core_organization_memberships
+                    ],
+                    "divisions": [
+                        {
+                            "id": membership.division_id,
+                            "name": membership.division.name,
+                            "organization_id": membership.division.organization_id,
+                            "projects_count": Project.objects.filter(
+                                division=membership.division,
+                            ).count(),
+                            "open_tasks_count": Task.objects.filter(
+                                Q(division=membership.division)
+                                | Q(project__division=membership.division),
+                            )
+                            .exclude(status=Task.Status.DONE)
+                            .distinct()
+                            .count(),
+                        }
+                        for membership in division_head_memberships
+                    ],
+                    "projects": [
+                        {
+                            "id": membership.project_id,
+                            "name": membership.project.name,
+                            "division_id": membership.project.division_id,
+                            "members_count": ProjectMembership.objects.filter(
+                                project=membership.project,
+                                is_active=True,
+                            ).count(),
+                            "open_tasks_count": Task.objects.filter(
+                                project=membership.project,
+                            )
+                            .exclude(status=Task.Status.DONE)
+                            .count(),
+                        }
+                        for membership in project_lead_memberships
+                    ],
+                },
+            }
+        )
+
+
 class OrganizationListCreateView(generics.ListCreateAPIView):
     serializer_class = OrganizationSerializer
 

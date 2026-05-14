@@ -12,6 +12,7 @@ from .models import (
     Announcement,
     Division,
     DivisionMembership,
+    Invitation,
     Organization,
     OrganizationMembership,
     Profile,
@@ -542,6 +543,231 @@ class AnnouncementAPITests(APITestCase):
             reverse("announcement_detail", kwargs={"pk": announcement.pk})
         )
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+
+@override_settings(MEDIA_ROOT=TEST_MEDIA_ROOT)
+class DashboardAPITests(APITestCase):
+    def setUp(self):
+        self.core_user = User.objects.create_user(
+            username="core-dashboard@example.com",
+            email="core-dashboard@example.com",
+            password="Password123",
+        )
+        Profile.objects.create(
+            user=self.core_user,
+            full_name="Core Dashboard",
+            major="Information Systems",
+            campus_location="Kemanggisan",
+        )
+        self.division_head_user = User.objects.create_user(
+            username="head-dashboard@example.com",
+            email="head-dashboard@example.com",
+            password="Password123",
+        )
+        self.project_lead_user = User.objects.create_user(
+            username="lead-dashboard@example.com",
+            email="lead-dashboard@example.com",
+            password="Password123",
+        )
+        self.member_user = User.objects.create_user(
+            username="member-dashboard@example.com",
+            email="member-dashboard@example.com",
+            password="Password123",
+        )
+        self.outsider_user = User.objects.create_user(
+            username="outsider-dashboard@example.com",
+            email="outsider-dashboard@example.com",
+            password="Password123",
+        )
+        self.organization = Organization.objects.create(
+            name="Dashboard Org",
+            created_by=self.core_user,
+        )
+        self.division = Division.objects.create(
+            organization=self.organization,
+            name="Product",
+        )
+        self.project = Project.objects.create(
+            division=self.division,
+            name="Portal",
+        )
+
+        for user in [
+            self.core_user,
+            self.division_head_user,
+            self.project_lead_user,
+            self.member_user,
+        ]:
+            OrganizationMembership.objects.create(
+                organization=self.organization,
+                user=user,
+                role=(
+                    OrganizationMembership.Role.CORE_BOARD
+                    if user == self.core_user
+                    else OrganizationMembership.Role.MEMBER
+                ),
+            )
+
+        DivisionMembership.objects.create(
+            division=self.division,
+            user=self.division_head_user,
+            role=DivisionMembership.Role.DIVISION_HEAD,
+        )
+        for user in [self.project_lead_user, self.member_user]:
+            DivisionMembership.objects.create(
+                division=self.division,
+                user=user,
+                role=DivisionMembership.Role.MEMBER,
+            )
+        ProjectMembership.objects.create(
+            project=self.project,
+            user=self.project_lead_user,
+            role=ProjectMembership.Role.PROJECT_LEAD,
+        )
+        ProjectMembership.objects.create(
+            project=self.project,
+            user=self.member_user,
+            role=ProjectMembership.Role.MEMBER,
+        )
+
+    def test_dashboard_requires_authentication(self):
+        response = self.client.get(reverse("dashboard"))
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_dashboard_returns_member_personal_feed(self):
+        assigned_task = Task.objects.create(
+            project=self.project,
+            title="Prepare onboarding notes",
+            created_by=self.project_lead_user,
+            assigned_to=self.member_user,
+        )
+        created_task = Task.objects.create(
+            project=self.project,
+            title="Review onboarding notes",
+            created_by=self.member_user,
+            assigned_to=self.member_user,
+        )
+        announcement = Announcement.objects.create(
+            organization=self.organization,
+            created_by=self.core_user,
+            title="General Broadcast",
+            content="Welcome to the semester.",
+            priority=Announcement.Priority.HIGH,
+        )
+        document = ResourceDocument.objects.create(
+            project=self.project,
+            uploaded_by=self.project_lead_user,
+            title="Starter Guide",
+            file=SimpleUploadedFile("starter.pdf", b"guide", content_type="application/pdf"),
+        )
+        invitation = Invitation.objects.create(
+            organization=self.organization,
+            invited_by=self.core_user,
+            email=self.member_user.email,
+            role=Invitation.Role.MEMBER,
+        )
+
+        self.client.force_authenticate(self.member_user)
+        response = self.client.get(reverse("dashboard"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["profile"]["email"], self.member_user.email)
+        self.assertEqual(
+            response.data["memberships"]["organizations"][0]["id"],
+            self.organization.pk,
+        )
+        self.assertIn(
+            assigned_task.pk,
+            [task["id"] for task in response.data["tasks"]["assigned_to_me"]],
+        )
+        self.assertIn(
+            created_task.pk,
+            [task["id"] for task in response.data["tasks"]["created_by_me"]],
+        )
+        self.assertEqual(response.data["announcements"][0]["id"], announcement.pk)
+        self.assertEqual(response.data["documents"][0]["id"], document.pk)
+        self.assertEqual(response.data["pending_invitations"][0]["id"], invitation.pk)
+        self.assertEqual(response.data["management_summary"]["organizations"], [])
+        self.assertEqual(response.data["management_summary"]["divisions"], [])
+        self.assertEqual(response.data["management_summary"]["projects"], [])
+
+    def test_dashboard_returns_role_based_management_summary(self):
+        Task.objects.create(
+            division=self.division,
+            title="Division plan",
+            created_by=self.core_user,
+            assigned_to=self.division_head_user,
+        )
+        Task.objects.create(
+            project=self.project,
+            title="Project roadmap",
+            created_by=self.division_head_user,
+            assigned_to=self.project_lead_user,
+        )
+        Task.objects.create(
+            project=self.project,
+            title="Completed work",
+            status=Task.Status.DONE,
+            created_by=self.project_lead_user,
+            assigned_to=self.member_user,
+        )
+
+        self.client.force_authenticate(self.core_user)
+        core_response = self.client.get(reverse("dashboard"))
+        self.assertEqual(core_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            core_response.data["management_summary"]["organizations"][0][
+                "open_tasks_count"
+            ],
+            2,
+        )
+        self.assertEqual(
+            len(core_response.data["tasks"]["managed"]),
+            2,
+        )
+
+        self.client.force_authenticate(self.division_head_user)
+        division_response = self.client.get(reverse("dashboard"))
+        self.assertEqual(division_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            division_response.data["management_summary"]["divisions"][0][
+                "open_tasks_count"
+            ],
+            2,
+        )
+
+        self.client.force_authenticate(self.project_lead_user)
+        project_response = self.client.get(reverse("dashboard"))
+        self.assertEqual(project_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            project_response.data["management_summary"]["projects"][0][
+                "members_count"
+            ],
+            2,
+        )
+
+    def test_dashboard_does_not_leak_unrelated_data(self):
+        Announcement.objects.create(
+            organization=self.organization,
+            created_by=self.core_user,
+            title="Private Org Broadcast",
+            content="Members only.",
+        )
+        ResourceDocument.objects.create(
+            division=self.division,
+            uploaded_by=self.core_user,
+            title="Private Division Doc",
+            file=SimpleUploadedFile("private.pdf", b"doc", content_type="application/pdf"),
+        )
+
+        self.client.force_authenticate(self.outsider_user)
+        response = self.client.get(reverse("dashboard"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["memberships"]["organizations"], [])
+        self.assertEqual(response.data["announcements"], [])
+        self.assertEqual(response.data["documents"], [])
 
 
 class TaskAPITests(APITestCase):

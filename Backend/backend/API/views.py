@@ -8,6 +8,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import (
     Announcement,
+    CalendarEvent,
     Division,
     DivisionMembership,
     Invitation,
@@ -21,15 +22,18 @@ from .models import (
 )
 from .permissions import (
     can_access_announcement,
+    can_access_calendar_event,
     can_access_repository,
     can_access_resource_document,
     can_access_task,
     can_manage_announcement,
+    can_manage_calendar_event,
     can_delete_resource_document,
     can_delete_task,
 )
 from .serializers import (
     AnnouncementSerializer,
+    CalendarEventSerializer,
     DivisionSerializer,
     EmailTokenObtainPairSerializer,
     InvitationAcceptSerializer,
@@ -220,6 +224,18 @@ class DashboardView(APIView):
                         organization__memberships__is_active=True,
                     )
                     .select_related("organization", "created_by")
+                    .distinct()[:10],
+                    many=True,
+                    context={"request": request},
+                ).data,
+                "calendar_events": CalendarEventSerializer(
+                    CalendarEvent.objects.filter(visible_document_filter)
+                    .select_related(
+                        "organization",
+                        "division__organization",
+                        "project__division__organization",
+                        "created_by",
+                    )
                     .distinct()[:10],
                     many=True,
                     context={"request": request},
@@ -530,6 +546,111 @@ class AnnouncementDetailView(generics.RetrieveDestroyAPIView):
             raise PermissionDenied(
                 "You do not have permission to delete this announcement."
             )
+        instance.delete()
+
+
+class CalendarEventListView(generics.ListAPIView):
+    serializer_class = CalendarEventSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        queryset = CalendarEvent.objects.filter(
+            Q(organization__memberships__user=user, organization__memberships__is_active=True)
+            | Q(
+                division__organization__memberships__user=user,
+                division__organization__memberships__role=OrganizationMembership.Role.CORE_BOARD,
+                division__organization__memberships__is_active=True,
+            )
+            | Q(division__memberships__user=user, division__memberships__is_active=True)
+            | Q(
+                project__division__organization__memberships__user=user,
+                project__division__organization__memberships__role=OrganizationMembership.Role.CORE_BOARD,
+                project__division__organization__memberships__is_active=True,
+            )
+            | Q(
+                project__division__memberships__user=user,
+                project__division__memberships__role=DivisionMembership.Role.DIVISION_HEAD,
+                project__division__memberships__is_active=True,
+            )
+            | Q(project__memberships__user=user, project__memberships__is_active=True)
+        ).select_related(
+            "organization",
+            "division__organization",
+            "project__division__organization",
+            "created_by",
+        )
+
+        starts_after = self.request.query_params.get("starts_after")
+        starts_before = self.request.query_params.get("starts_before")
+        if starts_after:
+            queryset = queryset.filter(starts_at__gte=starts_after)
+        if starts_before:
+            queryset = queryset.filter(starts_at__lte=starts_before)
+        return queryset.distinct()
+
+
+class ScopeCalendarEventListCreateView(generics.ListCreateAPIView):
+    serializer_class = CalendarEventSerializer
+    scope_model = None
+    scope_url_kwarg = "pk"
+
+    def get_scope(self):
+        return generics.get_object_or_404(
+            self.scope_model,
+            pk=self.kwargs[self.scope_url_kwarg],
+        )
+
+    def get_queryset(self):
+        scope = self.get_scope()
+        if not can_access_repository(self.request.user, scope):
+            raise PermissionDenied("You do not have access to this calendar.")
+        if isinstance(scope, Organization):
+            return CalendarEvent.objects.filter(organization=scope)
+        if isinstance(scope, Division):
+            return CalendarEvent.objects.filter(division=scope)
+        return CalendarEvent.objects.filter(project=scope)
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["scope"] = self.get_scope()
+        return context
+
+
+class OrganizationCalendarEventListCreateView(ScopeCalendarEventListCreateView):
+    scope_model = Organization
+
+
+class DivisionCalendarEventListCreateView(ScopeCalendarEventListCreateView):
+    scope_model = Division
+
+
+class ProjectCalendarEventListCreateView(ScopeCalendarEventListCreateView):
+    scope_model = Project
+
+
+class CalendarEventDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = CalendarEventSerializer
+    queryset = CalendarEvent.objects.select_related(
+        "organization",
+        "division__organization",
+        "project__division__organization",
+        "created_by",
+    )
+
+    def get_object(self):
+        event = super().get_object()
+        if not can_access_calendar_event(self.request.user, event):
+            raise PermissionDenied("You do not have access to this calendar event.")
+        return event
+
+    def perform_update(self, serializer):
+        if not can_manage_calendar_event(self.request.user, serializer.instance):
+            raise PermissionDenied("You do not have permission to update this event.")
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        if not can_manage_calendar_event(self.request.user, instance):
+            raise PermissionDenied("You do not have permission to delete this event.")
         instance.delete()
 
 

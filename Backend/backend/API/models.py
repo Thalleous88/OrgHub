@@ -448,6 +448,81 @@ class Announcement(models.Model):
         return self.title
 
 
+class CalendarEvent(models.Model):
+    class EventType(models.TextChoices):
+        EVENT = "EVENT", "Event"
+        MEETING = "MEETING", "Meeting"
+        MILESTONE = "MILESTONE", "Milestone"
+
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="calendar_events",
+        null=True,
+        blank=True,
+    )
+    division = models.ForeignKey(
+        Division,
+        on_delete=models.CASCADE,
+        related_name="calendar_events",
+        null=True,
+        blank=True,
+    )
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.CASCADE,
+        related_name="calendar_events",
+        null=True,
+        blank=True,
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="created_calendar_events",
+    )
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    event_type = models.CharField(
+        max_length=20,
+        choices=EventType.choices,
+        default=EventType.EVENT,
+    )
+    location = models.CharField(max_length=255, blank=True)
+    starts_at = models.DateTimeField()
+    ends_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["starts_at", "-created_at"]
+
+    @property
+    def calendar_scope(self):
+        if self.organization_id:
+            return "organizations"
+        if self.division_id:
+            return "divisions"
+        return "projects"
+
+    @property
+    def calendar_scope_id(self):
+        return self.organization_id or self.division_id or self.project_id
+
+    def clean(self):
+        scopes = [self.organization_id, self.division_id, self.project_id]
+        if sum(scope is not None for scope in scopes) != 1:
+            raise ValidationError("Calendar event must belong to exactly one scope.")
+        if self.ends_at is not None and self.ends_at < self.starts_at:
+            raise ValidationError("Event end time cannot be before start time.")
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.title
+
+
 class Task(models.Model):
     class Status(models.TextChoices):
         TODO = "ToDo", "To Do"

@@ -3,19 +3,24 @@ from django.urls import path
 from .views import (
     AnnouncementDetailView,
     AnnouncementFeedView,
+    CalendarEventDetailView,
+    CalendarEventListView,
     CurrentUserProfileView,
     CurrentUserView,
     DashboardView,
+    DivisionCalendarEventListCreateView,
     DivisionDocumentListCreateView,
     DivisionInvitationCreateView,
     DivisionListCreateView,
     InvitationAcceptView,
     LoginView,
     OrganizationAnnouncementListCreateView,
+    OrganizationCalendarEventListCreateView,
     OrganizationDocumentListCreateView,
     OrganizationInvitationCreateView,
     OrganizationListCreateView,
     ProjectDocumentListCreateView,
+    ProjectCalendarEventListCreateView,
     ProjectInvitationCreateView,
     ProjectListCreateView,
     RegisterView,
@@ -32,6 +37,12 @@ urlpatterns = [
     path("auth/me/", CurrentUserView.as_view(), name="current_user"),
     path("auth/profile/", CurrentUserProfileView.as_view(), name="current_user_profile"),
     path("dashboard/", DashboardView.as_view(), name="dashboard"),
+    path("calendar/events/", CalendarEventListView.as_view(), name="calendar_event_list"),
+    path(
+        "calendar/events/<int:pk>/",
+        CalendarEventDetailView.as_view(),
+        name="calendar_event_detail",
+    ),
     path("organizations/", OrganizationListCreateView.as_view(), name="organization_list"),
     path(
         "organizations/<int:pk>/invite/",
@@ -48,6 +59,11 @@ urlpatterns = [
         OrganizationAnnouncementListCreateView.as_view(),
         name="organization_announcements",
     ),
+    path(
+        "organizations/<int:pk>/calendar/events/",
+        OrganizationCalendarEventListCreateView.as_view(),
+        name="organization_calendar_events",
+    ),
     path("divisions/", DivisionListCreateView.as_view(), name="division_list"),
     path(
         "divisions/<int:pk>/invite/",
@@ -59,6 +75,11 @@ urlpatterns = [
         DivisionDocumentListCreateView.as_view(),
         name="division_documents",
     ),
+    path(
+        "divisions/<int:pk>/calendar/events/",
+        DivisionCalendarEventListCreateView.as_view(),
+        name="division_calendar_events",
+    ),
     path("projects/", ProjectListCreateView.as_view(), name="project_list"),
     path(
         "projects/<int:pk>/invite/",
@@ -69,6 +90,11 @@ urlpatterns = [
         "projects/<int:pk>/documents/",
         ProjectDocumentListCreateView.as_view(),
         name="project_documents",
+    ),
+    path(
+        "projects/<int:pk>/calendar/events/",
+        ProjectCalendarEventListCreateView.as_view(),
+        name="project_calendar_events",
     ),
     path("documents/<int:pk>/", ResourceDocumentDetailView.as_view(), name="document_detail"),
     path(

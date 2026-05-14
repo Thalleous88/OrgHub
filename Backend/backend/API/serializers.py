@@ -3,6 +3,7 @@ from rest_framework import serializers
 
 from .models import (
     Announcement,
+    CalendarEvent,
     Division,
     DivisionMembership,
     Invitation,
@@ -16,6 +17,7 @@ from .models import (
 )
 from .permissions import (
     can_assign_task,
+    can_manage_calendar_scope,
     can_manage_division,
     can_manage_project_members,
     can_update_task,
@@ -425,6 +427,70 @@ class AnnouncementSerializer(serializers.ModelSerializer):
             created_by=self.context["request"].user,
             **validated_data,
         )
+
+
+class CalendarEventSerializer(serializers.ModelSerializer):
+    calendar_scope = serializers.CharField(read_only=True)
+    calendar_scope_id = serializers.IntegerField(read_only=True)
+    created_by_email = serializers.EmailField(source="created_by.email", read_only=True)
+
+    class Meta:
+        model = CalendarEvent
+        fields = [
+            "id",
+            "organization",
+            "division",
+            "project",
+            "calendar_scope",
+            "calendar_scope_id",
+            "title",
+            "description",
+            "event_type",
+            "location",
+            "starts_at",
+            "ends_at",
+            "created_by",
+            "created_by_email",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "organization",
+            "division",
+            "project",
+            "calendar_scope",
+            "calendar_scope_id",
+            "created_by",
+            "created_by_email",
+            "created_at",
+            "updated_at",
+        ]
+
+    def validate(self, attrs):
+        scope = self.context.get("scope")
+        instance = self.instance
+        starts_at = attrs.get("starts_at", getattr(instance, "starts_at", None))
+        ends_at = attrs.get("ends_at", getattr(instance, "ends_at", None))
+
+        if ends_at is not None and starts_at is not None and ends_at < starts_at:
+            raise serializers.ValidationError("Event end time cannot be before start time.")
+        if scope and not can_manage_calendar_scope(self.context["request"].user, scope):
+            raise serializers.ValidationError(
+                "You do not have permission to manage this calendar."
+            )
+        return attrs
+
+    def create(self, validated_data):
+        scope = self.context["scope"]
+        kwargs = {"created_by": self.context["request"].user, **validated_data}
+        if isinstance(scope, Organization):
+            kwargs["organization"] = scope
+        elif isinstance(scope, Division):
+            kwargs["division"] = scope
+        else:
+            kwargs["project"] = scope
+        return CalendarEvent.objects.create(**kwargs)
 
 
 class TaskSerializer(serializers.ModelSerializer):

@@ -1,15 +1,18 @@
 import shutil
 import tempfile
+from datetime import timedelta
 
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import override_settings
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
 from .models import (
     Announcement,
+    CalendarEvent,
     Division,
     DivisionMembership,
     Invitation,
@@ -600,6 +603,257 @@ class AnnouncementAPITests(APITestCase):
             reverse("announcement_detail", kwargs={"pk": announcement.pk})
         )
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+
+class CalendarEventAPITests(APITestCase):
+    def setUp(self):
+        self.core_user = User.objects.create_user(
+            username="core-calendar@example.com",
+            email="core-calendar@example.com",
+            password="Password123",
+        )
+        self.division_head_user = User.objects.create_user(
+            username="head-calendar@example.com",
+            email="head-calendar@example.com",
+            password="Password123",
+        )
+        self.project_lead_user = User.objects.create_user(
+            username="lead-calendar@example.com",
+            email="lead-calendar@example.com",
+            password="Password123",
+        )
+        self.member_user = User.objects.create_user(
+            username="member-calendar@example.com",
+            email="member-calendar@example.com",
+            password="Password123",
+        )
+        self.outsider_user = User.objects.create_user(
+            username="outsider-calendar@example.com",
+            email="outsider-calendar@example.com",
+            password="Password123",
+        )
+        self.organization = Organization.objects.create(
+            name="Calendar Org",
+            created_by=self.core_user,
+        )
+        self.division = Division.objects.create(
+            organization=self.organization,
+            name="Programs",
+        )
+        self.project = Project.objects.create(
+            division=self.division,
+            name="Mentoring Track",
+        )
+
+        for user in [
+            self.core_user,
+            self.division_head_user,
+            self.project_lead_user,
+            self.member_user,
+        ]:
+            OrganizationMembership.objects.create(
+                organization=self.organization,
+                user=user,
+                role=(
+                    OrganizationMembership.Role.CORE_BOARD
+                    if user == self.core_user
+                    else OrganizationMembership.Role.MEMBER
+                ),
+            )
+        DivisionMembership.objects.create(
+            division=self.division,
+            user=self.division_head_user,
+            role=DivisionMembership.Role.DIVISION_HEAD,
+        )
+        for user in [self.project_lead_user, self.member_user]:
+            DivisionMembership.objects.create(
+                division=self.division,
+                user=user,
+                role=DivisionMembership.Role.MEMBER,
+            )
+        ProjectMembership.objects.create(
+            project=self.project,
+            user=self.project_lead_user,
+            role=ProjectMembership.Role.PROJECT_LEAD,
+        )
+        ProjectMembership.objects.create(
+            project=self.project,
+            user=self.member_user,
+            role=ProjectMembership.Role.MEMBER,
+        )
+
+    def event_payload(self, **overrides):
+        starts_at = timezone.now() + timedelta(days=1)
+        payload = {
+            "title": "Weekly Sync",
+            "description": "Discuss upcoming work.",
+            "event_type": CalendarEvent.EventType.MEETING,
+            "location": "Room 501",
+            "starts_at": starts_at.isoformat(),
+            "ends_at": (starts_at + timedelta(hours=1)).isoformat(),
+        }
+        payload.update(overrides)
+        return payload
+
+    def test_core_board_can_create_organization_event(self):
+        self.client.force_authenticate(self.core_user)
+
+        response = self.client.post(
+            reverse("organization_calendar_events", kwargs={"pk": self.organization.pk}),
+            self.event_payload(title="General Assembly"),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        event = CalendarEvent.objects.get(title="General Assembly")
+        self.assertEqual(event.organization, self.organization)
+        self.assertEqual(event.created_by, self.core_user)
+
+    def test_division_head_can_create_division_event(self):
+        self.client.force_authenticate(self.division_head_user)
+
+        response = self.client.post(
+            reverse("division_calendar_events", kwargs={"pk": self.division.pk}),
+            self.event_payload(title="Division Planning"),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(CalendarEvent.objects.get(title="Division Planning").division, self.division)
+
+    def test_project_lead_can_create_project_meeting(self):
+        self.client.force_authenticate(self.project_lead_user)
+
+        response = self.client.post(
+            reverse("project_calendar_events", kwargs={"pk": self.project.pk}),
+            self.event_payload(title="Mentoring Session"),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(CalendarEvent.objects.get(title="Mentoring Session").project, self.project)
+
+    def test_regular_member_can_read_but_not_create_project_event(self):
+        event = CalendarEvent.objects.create(
+            project=self.project,
+            created_by=self.project_lead_user,
+            title="Member Visible Meeting",
+            event_type=CalendarEvent.EventType.MEETING,
+            starts_at=timezone.now() + timedelta(days=1),
+        )
+        self.client.force_authenticate(self.member_user)
+
+        response = self.client.get(reverse("calendar_event_detail", kwargs={"pk": event.pk}))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        response = self.client.post(
+            reverse("project_calendar_events", kwargs={"pk": self.project.pk}),
+            self.event_payload(title="Unauthorized Meeting"),
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_calendar_feed_only_returns_accessible_events(self):
+        visible_event = CalendarEvent.objects.create(
+            project=self.project,
+            created_by=self.project_lead_user,
+            title="Visible Project Meeting",
+            starts_at=timezone.now() + timedelta(days=1),
+        )
+        other_organization = Organization.objects.create(
+            name="Other Calendar Org",
+            created_by=self.outsider_user,
+        )
+        CalendarEvent.objects.create(
+            organization=other_organization,
+            created_by=self.outsider_user,
+            title="Hidden Organization Event",
+            starts_at=timezone.now() + timedelta(days=1),
+        )
+
+        self.client.force_authenticate(self.member_user)
+        response = self.client.get(reverse("calendar_event_list"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual([event["id"] for event in response.data], [visible_event.pk])
+
+    def test_calendar_feed_can_filter_by_start_range(self):
+        soon_event = CalendarEvent.objects.create(
+            organization=self.organization,
+            created_by=self.core_user,
+            title="Soon Event",
+            starts_at=timezone.now() + timedelta(days=1),
+        )
+        CalendarEvent.objects.create(
+            organization=self.organization,
+            created_by=self.core_user,
+            title="Later Event",
+            starts_at=timezone.now() + timedelta(days=10),
+        )
+
+        self.client.force_authenticate(self.member_user)
+        response = self.client.get(
+            reverse("calendar_event_list"),
+            {"starts_before": (timezone.now() + timedelta(days=2)).isoformat()},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual([event["id"] for event in response.data], [soon_event.pk])
+
+    def test_outsider_cannot_read_event(self):
+        event = CalendarEvent.objects.create(
+            organization=self.organization,
+            created_by=self.core_user,
+            title="Private Event",
+            starts_at=timezone.now() + timedelta(days=1),
+        )
+
+        self.client.force_authenticate(self.outsider_user)
+        response = self.client.get(reverse("calendar_event_detail", kwargs={"pk": event.pk}))
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_only_calendar_managers_can_update_or_delete_event(self):
+        event = CalendarEvent.objects.create(
+            project=self.project,
+            created_by=self.project_lead_user,
+            title="Managed Meeting",
+            starts_at=timezone.now() + timedelta(days=1),
+        )
+
+        self.client.force_authenticate(self.member_user)
+        response = self.client.patch(
+            reverse("calendar_event_detail", kwargs={"pk": event.pk}),
+            {"title": "Member Rename"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        self.client.force_authenticate(self.project_lead_user)
+        response = self.client.patch(
+            reverse("calendar_event_detail", kwargs={"pk": event.pk}),
+            {"title": "Lead Rename"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        response = self.client.delete(reverse("calendar_event_detail", kwargs={"pk": event.pk}))
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_event_end_time_cannot_be_before_start_time(self):
+        starts_at = timezone.now() + timedelta(days=1)
+        self.client.force_authenticate(self.core_user)
+
+        response = self.client.post(
+            reverse("organization_calendar_events", kwargs={"pk": self.organization.pk}),
+            self.event_payload(
+                starts_at=starts_at.isoformat(),
+                ends_at=(starts_at - timedelta(hours=1)).isoformat(),
+            ),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
 
 @override_settings(MEDIA_ROOT=TEST_MEDIA_ROOT)

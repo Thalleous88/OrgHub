@@ -176,5 +176,40 @@ def can_manage_announcement(user, announcement):
     return is_core_board(user, announcement.organization)
 
 
+def can_access_calendar_event(user, event):
+    if event.organization_id:
+        return is_organization_member(user, event.organization)
+    if event.division_id:
+        return is_core_board(user, event.division.organization) or is_division_member(
+            user,
+            event.division,
+        )
+    return (
+        is_core_board(user, event.project.division.organization)
+        or is_division_head(user, event.project.division)
+        or is_project_member(user, event.project)
+    )
+
+
+def can_manage_calendar_scope(user, scope):
+    if hasattr(scope, "divisions"):
+        return is_core_board(user, scope)
+    if hasattr(scope, "projects"):
+        return can_manage_division(user, scope)
+    return (
+        is_core_board(user, scope.division.organization)
+        or is_division_head(user, scope.division)
+        or is_project_lead(user, scope)
+    )
+
+
+def can_manage_calendar_event(user, event):
+    if event.organization_id:
+        return can_manage_calendar_scope(user, event.organization)
+    if event.division_id:
+        return can_manage_calendar_scope(user, event.division)
+    return can_manage_calendar_scope(user, event.project)
+
+
 class IsAuthenticated(permissions.IsAuthenticated):
     pass

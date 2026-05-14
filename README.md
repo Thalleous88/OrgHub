@@ -17,6 +17,7 @@ A comprehensive organization productivity application designed to streamline tea
 - **PostgreSQL** - Database
 - **JWT Authentication** - Secure user authentication
 - **CORS Headers** - Cross-origin resource sharing
+- **uv** - Python dependency and command runner
 
 ### Frontend
 - **React** - UI library
@@ -26,9 +27,16 @@ A comprehensive organization productivity application designed to streamline tea
 
 ## Features
 
-- User authentication and authorization
-- Task management and tracking
-- Team collaboration tools
+- Email/password authentication with JWT tokens
+- Scoped role-based access control for organizations, divisions, and projects
+- Invitation-only membership management
+- Organization, division, and project workspace hierarchy
+- Task assignment and status tracking
+- Scoped document repositories with role-based permissions
+- Organization announcements and broadcast feed
+- Calendar events, meetings, and milestones
+- Dashboard aggregation for personal and management views
+- In-app notifications and reminder generation
 - RESTful API architecture
 - Modern responsive UI
 - Secure data handling
@@ -38,6 +46,7 @@ A comprehensive organization productivity application designed to streamline tea
 ### Prerequisites
 
 - Python 3.10 or higher
+- uv
 - Node.js and npm
 - PostgreSQL database
 
@@ -49,32 +58,35 @@ A comprehensive organization productivity application designed to streamline tea
    cd orghub
    ```
 
-2. Create a virtual environment:
+2. Navigate to the backend directory:
    ```bash
-   python -m venv .venv
-   # On Windows:
-   .venv\Scripts\activate
-   # On macOS/Linux:
-   source .venv/bin/activate
+   cd Backend
    ```
 
-3. Install Python dependencies:
+3. Install backend dependencies:
    ```bash
-   pip install -r requirements.txt
+   uv sync
    ```
 
 4. Set up environment variables:
-   Create a `.env` file in the backend directory with:
-   ```
+   Create `Backend/.env` with:
+   ```env
    SECRET_KEY=your-secret-key-here
+   DEBUG=True
    DATABASE_URL=postgresql://user:password@localhost:5432/orghub
    ```
 
 5. Run database migrations:
    ```bash
-   cd backend
-   python manage.py migrate
+   uv run python backend/manage.py migrate
    ```
+
+6. Verify the backend configuration:
+   ```bash
+   uv run python backend/manage.py check
+   ```
+
+Backend dependencies are managed by `Backend/pyproject.toml` and `Backend/uv.lock`. Do not use the stale root-level `requirements.txt` workflow for backend setup.
 
 ### Frontend Setup
 
@@ -94,8 +106,8 @@ A comprehensive organization productivity application designed to streamline tea
 
 1. Start the backend server:
    ```bash
-   cd backend
-   python manage.py runserver
+   cd Backend
+   uv run python backend/manage.py runserver
    ```
 
 2. Start the frontend development server:
@@ -120,7 +132,22 @@ A comprehensive organization productivity application designed to streamline tea
 
 ## API Documentation
 
-The backend provides a REST API. Once the server is running, you can access the API documentation at `http://localhost:8000/api/`.
+The backend provides a REST API under `http://localhost:8000/api/`.
+
+Comprehensive backend API documentation is available in [`Backend/API_DOCS.md`](Backend/API_DOCS.md).
+
+Implemented backend API areas include:
+
+- Auth/profile: registration, login, current user, profile update
+- JWT utility routes: token, refresh, verify
+- Workspace hierarchy: organizations, divisions, projects
+- Invitations and membership onboarding
+- Documents and downloads
+- Tasks and task status updates
+- Announcements
+- Calendar events, meetings, and milestones
+- Notifications and reminder generation
+- Dashboard aggregation
 
 ## Contributing
 
@@ -129,7 +156,3 @@ The backend provides a REST API. Once the server is running, you can access the 
 3. Commit your changes (`git commit -m 'Add some amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.

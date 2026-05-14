@@ -1,3 +1,22 @@
 from django.contrib import admin
 
-# Register your models here.
+from .models import (
+    Division,
+    DivisionMembership,
+    Invitation,
+    Organization,
+    OrganizationMembership,
+    Profile,
+    Project,
+    ProjectMembership,
+)
+
+
+admin.site.register(Profile)
+admin.site.register(Organization)
+admin.site.register(Division)
+admin.site.register(Project)
+admin.site.register(OrganizationMembership)
+admin.site.register(DivisionMembership)
+admin.site.register(ProjectMembership)
+admin.site.register(Invitation)

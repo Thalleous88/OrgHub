@@ -1,3 +1,4 @@
+import type { ReactElement } from 'react';
 import type { DashboardDocument } from '../services/api';
 import './ResourceGrid.css';
 
@@ -5,7 +6,7 @@ interface ResourceGridProps {
   documents: DashboardDocument[];
 }
 
-const scopeIcons: Record<string, JSX.Element> = {
+const scopeIcons: Record<string, ReactElement> = {
   organizations: (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
       <rect x="3" y="7" width="18" height="14" rx="2" stroke="currentColor" strokeWidth="1.5"/>

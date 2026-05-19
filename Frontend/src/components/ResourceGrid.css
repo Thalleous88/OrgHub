@@ -1,7 +1,3 @@
-/* ============================================================
-   Resource Grid Styles
-   ============================================================ */
-
 .resource-grid {
   margin-top: 0.5rem;
 }
@@ -33,7 +29,6 @@
   gap: 12px;
 }
 
-/* Resource Card */
 .resource-card {
   display: flex;
   flex-direction: column;
@@ -89,7 +84,6 @@
   margin-top: auto;
 }
 
-/* --- Responsive --- */
 @media (max-width: 1200px) {
   .resource-grid__grid {
     grid-template-columns: repeat(2, 1fr);

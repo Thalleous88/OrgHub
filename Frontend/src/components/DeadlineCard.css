@@ -1,7 +1,3 @@
-/* ============================================================
-   Deadline Card Styles
-   ============================================================ */
-
 .deadline-card {
   padding: 1.5rem;
   display: flex;
@@ -44,7 +40,6 @@
   font-size: 0.9rem;
 }
 
-/* Task List */
 .deadline-card__list {
   list-style: none;
   display: flex;
@@ -101,7 +96,6 @@
   color: var(--text-muted);
 }
 
-/* Urgency Tags */
 .deadline-tag {
   font-size: 0.7rem;
   font-weight: 600;

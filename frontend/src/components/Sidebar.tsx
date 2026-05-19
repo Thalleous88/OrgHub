@@ -2,7 +2,15 @@ import { useAuth } from '../context/AuthContext';
 import { useLocation, useNavigate } from 'react-router-dom';
 import './Sidebar.css';
 
-const navItems = [
+interface NavItem {
+  id: string;
+  label: string;
+  path: string;
+  matchPrefix?: boolean;
+  icon: React.ReactNode;
+}
+
+const navItems: NavItem[] = [
   {
     id: 'dashboard',
     label: 'Dashboard',
@@ -20,9 +28,22 @@ const navItems = [
     id: 'workspace',
     label: 'Workspace',
     path: '/workspace',
+    matchPrefix: true,
     icon: (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
         <path d="M3 5h14M3 10h14M3 15h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+      </svg>
+    ),
+  },
+  {
+    id: 'tasks',
+    label: 'Tasks',
+    path: '/tasks',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <rect x="3" y="3" width="14" height="14" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+        <path d="M6 8l2 2 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M6 14h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
       </svg>
     ),
   },
@@ -48,9 +69,20 @@ const navItems = [
       </svg>
     ),
   },
+  {
+    id: 'announcements',
+    label: 'Announcements',
+    path: '/announcements',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <path d="M3 8v4l11 5V3L3 8z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+        <path d="M14 7v6M17 9v2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+      </svg>
+    ),
+  },
 ];
 
-const bottomItems = [
+const bottomItems: NavItem[] = [
   {
     id: 'settings',
     label: 'Settings',
@@ -62,19 +94,14 @@ const bottomItems = [
       </svg>
     ),
   },
-  {
-    id: 'support',
-    label: 'Support',
-    path: '/support',
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-        <circle cx="10" cy="10" r="8" stroke="currentColor" strokeWidth="1.5"/>
-        <path d="M7.5 8a2.5 2.5 0 015 0c0 1.5-2.5 2-2.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-        <circle cx="10" cy="14" r="0.5" fill="currentColor"/>
-      </svg>
-    ),
-  },
 ];
+
+function isActive(item: NavItem, pathname: string): boolean {
+  if (item.matchPrefix) {
+    return pathname === item.path || pathname.startsWith(`${item.path}/`);
+  }
+  return pathname === item.path;
+}
 
 export default function Sidebar() {
   const location = useLocation();
@@ -88,7 +115,6 @@ export default function Sidebar() {
 
   return (
     <aside className="sidebar animate-slide-in-left" id="main-sidebar">
-      {/* Logo */}
       <div className="sidebar__logo">
         <div className="sidebar__logo-icon">
           <svg width="22" height="22" viewBox="0 0 28 28" fill="none">
@@ -108,35 +134,39 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* Main Nav */}
       <nav className="sidebar__nav">
-        {navItems.map((item) => (
-          <button
-            key={item.id}
-            className={`sidebar__nav-item ${location.pathname === item.path ? 'sidebar__nav-item--active' : ''}`}
-            onClick={() => navigate(item.path)}
-            id={`nav-${item.id}`}
-          >
-            <span className="sidebar__nav-icon">{item.icon}</span>
-            <span className="sidebar__nav-label">{item.label}</span>
-            {location.pathname === item.path && <div className="sidebar__nav-indicator" />}
-          </button>
-        ))}
+        {navItems.map((item) => {
+          const active = isActive(item, location.pathname);
+          return (
+            <button
+              key={item.id}
+              className={`sidebar__nav-item ${active ? 'sidebar__nav-item--active' : ''}`}
+              onClick={() => navigate(item.path)}
+              id={`nav-${item.id}`}
+            >
+              <span className="sidebar__nav-icon">{item.icon}</span>
+              <span className="sidebar__nav-label">{item.label}</span>
+              {active && <div className="sidebar__nav-indicator" />}
+            </button>
+          );
+        })}
       </nav>
 
-      {/* Bottom Nav */}
       <div className="sidebar__bottom">
-        {bottomItems.map((item) => (
-          <button
-            key={item.id}
-            className={`sidebar__nav-item ${location.pathname === item.path ? 'sidebar__nav-item--active' : ''}`}
-            onClick={() => navigate(item.path)}
-            id={`nav-${item.id}`}
-          >
-            <span className="sidebar__nav-icon">{item.icon}</span>
-            <span className="sidebar__nav-label">{item.label}</span>
-          </button>
-        ))}
+        {bottomItems.map((item) => {
+          const active = isActive(item, location.pathname);
+          return (
+            <button
+              key={item.id}
+              className={`sidebar__nav-item ${active ? 'sidebar__nav-item--active' : ''}`}
+              onClick={() => navigate(item.path)}
+              id={`nav-${item.id}`}
+            >
+              <span className="sidebar__nav-icon">{item.icon}</span>
+              <span className="sidebar__nav-label">{item.label}</span>
+            </button>
+          );
+        })}
         <button
           className="sidebar__nav-item sidebar__nav-item--logout"
           onClick={handleLogout}

@@ -1,0 +1,116 @@
+/* ============================================================
+   Meeting Card Styles
+   ============================================================ */
+
+.meeting-card {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.meeting-card__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 1.25rem;
+}
+
+.meeting-card__empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.meeting-card__list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Meeting Item */
+.meeting-item {
+  padding: 14px;
+  border-radius: var(--radius-md);
+  background: var(--surface-glass-light);
+  border: 1px solid var(--border-secondary);
+  transition: all var(--transition-fast);
+}
+
+.meeting-item:hover {
+  border-color: var(--border-primary);
+  background: var(--surface-secondary);
+}
+
+.meeting-item--live {
+  border-color: var(--border-accent);
+  background: var(--teal-glow);
+}
+
+.meeting-item--live:hover {
+  border-color: var(--teal-500);
+}
+
+.meeting-item__live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--teal-400);
+  margin-bottom: 8px;
+}
+
+.meeting-item__live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--teal-400);
+  animation: live-pulse 1.5s ease-in-out infinite;
+}
+
+.meeting-item__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.meeting-item__type-icon {
+  color: var(--text-muted);
+  display: flex;
+  flex-shrink: 0;
+}
+
+.meeting-item__title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.meeting-item__details {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  padding-left: 24px;
+}
+
+.meeting-item__sep {
+  opacity: 0.4;
+}
+
+.meeting-item__desc {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 6px;
+  padding-left: 24px;
+  line-height: 1.4;
+}

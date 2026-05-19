@@ -5,7 +5,8 @@ interface DeadlineCardProps {
   tasks: DashboardTask[];
 }
 
-function getUrgencyInfo(dueAt: string): { label: string; className: string } {
+function getUrgencyInfo(dueAt: string | null): { label: string; className: string } {
+  if (!dueAt) return { label: 'No due date', className: 'deadline-tag--normal' };
   const now = new Date();
   const due = new Date(dueAt);
   const hoursLeft = (due.getTime() - now.getTime()) / (1000 * 60 * 60);
@@ -20,7 +21,8 @@ function getUrgencyInfo(dueAt: string): { label: string; className: string } {
   return { label: `${days} days left`, className: 'deadline-tag--normal' };
 }
 
-function formatDate(dateStr: string): string {
+function formatDate(dateStr: string | null): string {
+  if (!dateStr) return 'No due date';
   return new Date(dateStr).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
@@ -32,7 +34,12 @@ function formatDate(dateStr: string): string {
 export default function DeadlineCard({ tasks }: DeadlineCardProps) {
   const pendingTasks = tasks
     .filter((t) => t.status !== 'Done')
-    .sort((a, b) => new Date(a.due_at).getTime() - new Date(b.due_at).getTime())
+    .sort((a, b) => {
+      // Tasks without a due date sink to the bottom.
+      const aTime = a.due_at ? new Date(a.due_at).getTime() : Number.POSITIVE_INFINITY;
+      const bTime = b.due_at ? new Date(b.due_at).getTime() : Number.POSITIVE_INFINITY;
+      return aTime - bTime;
+    })
     .slice(0, 5);
 
   return (

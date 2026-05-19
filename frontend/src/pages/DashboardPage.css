@@ -1,28 +1,4 @@
-/* ============================================================
-   Dashboard Page Styles
-   ============================================================ */
 
-.dashboard-layout {
-  display: flex;
-  min-height: 100vh;
-  background: var(--navy-950);
-}
-
-.dashboard-main {
-  flex: 1;
-  margin-left: var(--sidebar-width);
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-}
-
-.dashboard-content {
-  flex: 1;
-  padding: 2rem;
-  max-width: 1200px;
-}
-
-/* --- Loading --- */
 .dashboard-loading {
   display: flex;
   flex-direction: column;
@@ -46,7 +22,6 @@
   to { transform: rotate(360deg); }
 }
 
-/* --- Error --- */
 .dashboard-error {
   display: flex;
   flex-direction: column;
@@ -85,7 +60,6 @@
   background: var(--teal-glow-strong);
 }
 
-/* --- Greeting --- */
 .dashboard-greeting {
   display: flex;
   align-items: flex-start;
@@ -123,6 +97,8 @@
   transition: all var(--transition-normal);
   box-shadow: 0 2px 10px var(--teal-glow);
   flex-shrink: 0;
+  border: none;
+  cursor: pointer;
 }
 
 .dashboard-greeting__create-btn:hover {
@@ -131,7 +107,6 @@
   transform: translateY(-1px);
 }
 
-/* --- Widgets Row --- */
 .dashboard-widgets-row {
   display: grid;
   grid-template-columns: 1.5fr 1fr;
@@ -139,7 +114,6 @@
   margin-bottom: 2rem;
 }
 
-/* --- Bottom Row --- */
 .dashboard-bottom-row {
   display: grid;
   grid-template-columns: 1.2fr 1fr;
@@ -155,7 +129,6 @@
   padding: 1.5rem;
 }
 
-/* --- Responsive --- */
 @media (max-width: 1024px) {
   .dashboard-widgets-row {
     grid-template-columns: 1fr;
@@ -167,14 +140,6 @@
 }
 
 @media (max-width: 768px) {
-  .dashboard-main {
-    margin-left: 64px;
-  }
-
-  .dashboard-content {
-    padding: 1.25rem;
-  }
-
   .dashboard-greeting {
     flex-direction: column;
     gap: 1rem;

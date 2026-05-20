@@ -157,7 +157,7 @@ export interface DashboardTask {
   title: string;
   description: string;
   status: 'ToDo' | 'InProgress' | 'Done';
-  due_at: string;
+  due_at: string | null;
   created_by: number;
   created_by_email: string;
   assigned_to: number | null;

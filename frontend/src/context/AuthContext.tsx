@@ -2,16 +2,18 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from '
 import {
   login as apiLogin,
   logout as apiLogout,
+  register as apiRegister,
   getCurrentUser,
   getAccessToken,
-  type CurrentUser,
-} from '../services/api';
+} from '../services/auth';
+import type { CurrentUser } from '../types/api';
 
 interface AuthContextType {
   user: CurrentUser | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   loginAction: (email: string, password: string) => Promise<void>;
+  registerAction: (email: string, password: string) => Promise<void>;
   logoutAction: () => void;
 }
 
@@ -46,6 +48,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(userData);
   };
 
+  const registerAction = async (email: string, password: string) => {
+    await apiRegister(email, password);
+    const userData = await getCurrentUser();
+    setUser(userData);
+  };
+
   const logoutAction = () => {
     apiLogout();
     setUser(null);
@@ -58,6 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAuthenticated: !!user,
         isLoading,
         loginAction,
+        registerAction,
         logoutAction,
       }}
     >

@@ -219,7 +219,7 @@ export default function OrganizationDetailPage() {
                           {m.email}
                         </td>
                         <td style={{ padding: '0.5rem 0.75rem' }}>
-                          <Badge variant={m.role === 'CORE_BOARD' ? 'teal' : 'gray'}>
+                          <Badge variant={m.role === 'CORE_BOARD' ? 'teal' : 'neutral'}>
                             {m.role.replace('_', ' ')}
                           </Badge>
                         </td>

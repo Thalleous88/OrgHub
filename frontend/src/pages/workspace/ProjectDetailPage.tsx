@@ -240,7 +240,7 @@ export default function ProjectDetailPage() {
                           {m.email}
                         </td>
                         <td style={{ padding: '0.5rem 0.75rem' }}>
-                          <Badge variant={m.role === 'PROJECT_LEAD' ? 'teal' : 'gray'}>
+                          <Badge variant={m.role === 'PROJECT_LEAD' ? 'teal' : 'neutral'}>
                             {m.role.replace('_', ' ')}
                           </Badge>
                         </td>

@@ -63,6 +63,10 @@ function toCalendarEvent(e: DashboardCalendarEvent): CalendarEvent {
     ends_at: e.ends_at,
     created_by: e.created_by,
     created_by_email: e.created_by_email,
+    assigned_to: e.assigned_to ?? [],
+    assigned_to_emails: e.assigned_to_emails ?? [],
+    assigned_divisions: e.assigned_divisions ?? [],
+    assigned_division_names: e.assigned_division_names ?? [],
     created_at: e.created_at,
     updated_at: e.updated_at,
   };

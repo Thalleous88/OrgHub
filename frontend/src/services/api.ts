@@ -1,7 +1,7 @@
 // OrgHub API Service Layer
 // Handles all HTTP requests to the Django REST backend with JWT token management.
 
-const API_BASE = 'http://localhost:8000/api';
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000/api';
 
 // ─── Token Helpers ───────────────────────────────────────────
 export function getAccessToken(): string | null {
@@ -193,6 +193,10 @@ export interface DashboardCalendarEvent {
   ends_at: string | null;
   created_by: number;
   created_by_email: string;
+  assigned_to: number[];
+  assigned_to_emails: string[];
+  assigned_divisions: number[];
+  assigned_division_names: string[];
   created_at: string;
   updated_at: string;
 }

@@ -35,6 +35,7 @@ from .permissions import (
 from .serializers import (
     AnnouncementSerializer,
     CalendarEventSerializer,
+    ChangePasswordSerializer,
     DivisionMembershipSerializer,
     DivisionSerializer,
     EmailTokenObtainPairSerializer,
@@ -726,32 +727,33 @@ class TaskListCreateView(generics.ListCreateAPIView):
     serializer_class = TaskSerializer
 
     def get_queryset(self):
+        user = self.request.user
         return (
             Task.objects.filter(
-                Q(created_by=self.request.user)
-                | Q(assigned_to=self.request.user)
+                Q(created_by=user)
+                | Q(assigned_to=user)
                 | Q(
-                    division__memberships__user=self.request.user,
+                    division__memberships__user=user,
                     division__memberships__role=DivisionMembership.Role.DIVISION_HEAD,
                     division__memberships__is_active=True,
                 )
                 | Q(
-                    division__organization__memberships__user=self.request.user,
+                    division__organization__memberships__user=user,
                     division__organization__memberships__role=OrganizationMembership.Role.CORE_BOARD,
                     division__organization__memberships__is_active=True,
                 )
                 | Q(
-                    project__memberships__user=self.request.user,
+                    project__memberships__user=user,
                     project__memberships__role=ProjectMembership.Role.PROJECT_LEAD,
                     project__memberships__is_active=True,
                 )
                 | Q(
-                    project__division__memberships__user=self.request.user,
+                    project__division__memberships__user=user,
                     project__division__memberships__role=DivisionMembership.Role.DIVISION_HEAD,
                     project__division__memberships__is_active=True,
                 )
                 | Q(
-                    project__division__organization__memberships__user=self.request.user,
+                    project__division__organization__memberships__user=user,
                     project__division__organization__memberships__role=OrganizationMembership.Role.CORE_BOARD,
                     project__division__organization__memberships__is_active=True,
                 )
@@ -847,3 +849,13 @@ class ProjectMemberListView(generics.ListAPIView):
             project=project,
             is_active=True,
         ).select_related("user__profile").order_by("user__email")
+
+
+class ChangePasswordView(APIView):
+    def post(self, request):
+        serializer = ChangePasswordSerializer(
+            data=request.data, context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({"detail": "Password changed successfully."})

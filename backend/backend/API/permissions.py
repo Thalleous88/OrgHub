@@ -127,18 +127,18 @@ def can_assign_task(user, assigned_to, division=None, project=None):
             return is_division_member(user, division)
         return False
 
-    if project is None:
+    if project is not None:
+        if is_core_board(user, project.division.organization):
+            return is_project_member(assigned_to, project)
+        if is_division_head(user, project.division):
+            return is_project_member(assigned_to, project)
+        if is_project_lead(user, project):
+            return is_project_member(assigned_to, project)
+        if user.id == assigned_to.id:
+            return is_project_member(user, project)
         return False
 
-    if is_core_board(user, project.division.organization):
-        return is_project_member(assigned_to, project)
-    if is_division_head(user, project.division):
-        return is_project_member(assigned_to, project)
-    if is_project_lead(user, project):
-        return is_project_member(assigned_to, project)
-    if user.id == assigned_to.id:
-        return is_project_member(user, project)
-    return False
+    return user.id == assigned_to.id
 
 
 def can_create_task(user, division=None, project=None):
@@ -150,7 +150,7 @@ def can_create_task(user, division=None, project=None):
             or is_division_member(user, project.division)
             or is_project_member(user, project)
         )
-    return False
+    return True
 
 
 def can_access_task(user, task):
@@ -160,18 +160,20 @@ def can_access_task(user, task):
         return True
     if task.division_id:
         return can_manage_division(user, task.division)
-    return (
-        is_core_board(user, task.project.division.organization)
-        or is_division_head(user, task.project.division)
-        or is_project_lead(user, task.project)
-    )
+    if task.project_id:
+        return (
+            is_core_board(user, task.project.division.organization)
+            or is_division_head(user, task.project.division)
+            or is_project_lead(user, task.project)
+        )
+    return False
 
 
 def can_update_task(user, task, changed_fields):
     if task.created_by_id == user.id:
         return True
     org = task.scope_organization
-    if is_core_board(user, org):
+    if org and is_core_board(user, org):
         return True
     if changed_fields <= {"status"}:
         return task.assigned_to.filter(id=user.id).exists()
@@ -181,7 +183,8 @@ def can_update_task(user, task, changed_fields):
 def can_delete_task(user, task):
     if task.created_by_id == user.id:
         return True
-    return is_core_board(user, task.scope_organization)
+    org = task.scope_organization
+    return org is not None and is_core_board(user, org)
 
 
 def can_access_announcement(user, announcement):

@@ -719,9 +719,9 @@ class TaskSerializer(serializers.ModelSerializer):
         project = attrs.get("project", getattr(instance, "project", None))
         assigned_users = attrs.get("assigned_emails", [])
 
-        if bool(division) == bool(project):
+        if division and project:
             raise serializers.ValidationError(
-                "Task must belong to exactly one division or project."
+                "Task cannot belong to both a division and a project."
             )
 
         if instance is None:
@@ -771,3 +771,32 @@ class TaskSerializer(serializers.ModelSerializer):
         if assigned_users is not None:
             instance.assigned_to.set(assigned_users)
         return instance
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    old_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True, min_length=8)
+    confirm_password = serializers.CharField(write_only=True)
+
+    def validate_old_password(self, value):
+        user = self.context["request"].user
+        if not user.check_password(value):
+            raise serializers.ValidationError("Current password is incorrect.")
+        return value
+
+    def validate(self, attrs):
+        if attrs["new_password"] != attrs["confirm_password"]:
+            raise serializers.ValidationError(
+                {"confirm_password": "New passwords do not match."}
+            )
+        if attrs["old_password"] == attrs["new_password"]:
+            raise serializers.ValidationError(
+                {"new_password": "New password must be different from current password."}
+            )
+        return attrs
+
+    def save(self, **kwargs):
+        user = self.context["request"].user
+        user.set_password(self.validated_data["new_password"])
+        user.save(update_fields=["password"])
+        return user

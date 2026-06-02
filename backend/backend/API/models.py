@@ -665,15 +665,17 @@ class Task(models.Model):
     def scope_organization(self):
         if self.division_id:
             return self.division.organization
-        return self.project.division.organization
+        if self.project_id:
+            return self.project.division.organization
+        return None
 
     @property
     def scope_division(self):
-        return self.division or self.project.division
+        return self.division or (self.project.division if self.project_id else None)
 
     def clean(self):
-        if bool(self.division_id) == bool(self.project_id):
-            raise ValidationError("Task must belong to exactly one division or project.")
+        if self.division_id and self.project_id:
+            raise ValidationError("Task cannot belong to both a division and a project.")
 
     def save(self, *args, **kwargs):
         self.full_clean()

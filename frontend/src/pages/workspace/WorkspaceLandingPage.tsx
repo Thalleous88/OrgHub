@@ -12,33 +12,26 @@ import {
 } from '../../components/ui';
 import { DivisionCard } from '../../components/workspace/WorkspaceCards';
 import CreateDivisionModal from '../../components/workspace/CreateDivisionModal';
-import AnnouncementsList from '../../components/announcements/AnnouncementsList';
-import CreateAnnouncementModal from '../../components/announcements/CreateAnnouncementModal';
 import { useDivisions, useOrganizations } from '../../hooks/queries/useWorkspace';
-import { useAnnouncementFeed } from '../../hooks/queries/useAnnouncements';
 import { useDashboard } from '../../hooks/queries/useDashboard';
 import { useAuth } from '../../context/AuthContext';
 import { useAcceptInvitation } from '../../hooks/queries/useInvitations';
 import { useToast } from '../../components/ui';
-import { useWorkspace } from '../../context/WorkspaceContext';
 import { getApiErrorMessage } from '../../lib/apiError';
 import '../../components/workspace/WorkspaceCards.css';
 
-type TabKey = 'divisions' | 'announcements' | 'members';
+type TabKey = 'divisions' | 'members';
 
 export default function WorkspaceLandingPage() {
   const { user } = useAuth();
-  const { isCoreBoard } = useWorkspace();
   const { data: divisions, isLoading: divsLoading } = useDivisions();
   const { data: organizations } = useOrganizations();
-  const { data: announcements, isLoading: annLoading } = useAnnouncementFeed();
   const { data: dashboard } = useDashboard();
   const acceptMut = useAcceptInvitation();
   const toast = useToast();
 
   const [tab, setTab] = useState<TabKey>('divisions');
   const [createDivisionOpen, setCreateDivisionOpen] = useState(false);
-  const [createAnnouncementOpen, setCreateAnnouncementOpen] = useState(false);
 
   const memberships = user?.memberships;
   const divisionRoleById = new Map((memberships?.divisions ?? []).map((d) => [d.id, d.role]));
@@ -87,21 +80,17 @@ export default function WorkspaceLandingPage() {
         </Button>
       );
     }
-    if (tab === 'announcements' && adminOrgs.length > 0 && adminOrgId !== undefined) {
-      return (
-        <Button variant="primary" onClick={() => setCreateAnnouncementOpen(true)}>
-          Post announcement
-        </Button>
-      );
-    }
     return null;
   })();
+
+  const hasDivisions = memberships?.divisions && memberships.divisions.length > 0;
+  const hasProjects = memberships?.projects && memberships.projects.length > 0;
 
   return (
     <AppShell>
       <PageHeader
         title="Workspace"
-        subtitle="Browse the divisions, announcements, and members you have access to."
+        subtitle="Browse the divisions and members you have access to."
         actions={headerActions}
       />
 
@@ -153,14 +142,13 @@ export default function WorkspaceLandingPage() {
         onChange={(k) => setTab(k as TabKey)}
         tabs={[
           { key: 'divisions', label: 'Divisions' },
-          { key: 'announcements', label: 'Announcements' },
           { key: 'members', label: 'Members' },
         ]}
       />
 
-      {adminOrgs.length > 1 && (tab === 'divisions' || tab === 'announcements') && (
+      {adminOrgs.length > 1 && tab === 'divisions' && (
         <div style={{ marginTop: '1rem', maxWidth: 320 }}>
-          <Field label={tab === 'divisions' ? 'Create division in' : 'Post announcement to'}>
+          <Field label="Create division in">
             <Select
               value={adminOrgId ?? ''}
               onChange={(e) => setAdminOrgId(Number(e.target.value))}
@@ -212,98 +200,87 @@ export default function WorkspaceLandingPage() {
           )
         )}
 
-        {tab === 'announcements' && (
-          annLoading ? (
-            <Spinner />
-          ) : !announcements || announcements.length === 0 ? (
-            <EmptyState
-              title="No announcements yet"
-              description={adminOrgs.length > 0 ? 'Post one to keep your organization informed.' : 'Broadcasts from your organizations will appear here.'}
-              action={adminOrgs.length > 0 && adminOrgId !== undefined ? (
-                <Button variant="primary" size="sm" onClick={() => setCreateAnnouncementOpen(true)}>Post announcement</Button>
-              ) : undefined}
-            />
-          ) : (
-            <AnnouncementsList
-              announcements={announcements}
-              canManage={(a) => isCoreBoard(a.organization)}
-            />
-          )
-        )}
-
         {tab === 'members' && (
-          (memberships?.organizations.length === 0 &&
-            memberships?.divisions.length === 0 &&
-            memberships?.projects.length === 0) ? (
+          (memberships?.organizations.length === 0 && !hasDivisions && !hasProjects) ? (
             <EmptyState
               title="No memberships"
               description="You aren't part of any organizations, divisions, or projects yet."
             />
           ) : (
-            <div className="ws-grid">
-              {(memberships?.organizations ?? []).map((o) => (
-                <div key={`org-${o.id}`} className="ws-card" style={{ cursor: 'default' }}>
-                  <div className="ws-card__head">
-                    <div className="ws-card__icon ws-card__icon--org">
-                      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                        <circle cx="10" cy="7" r="3" stroke="currentColor" strokeWidth="1.5" />
-                        <path d="M3 17a7 7 0 0114 0" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                      </svg>
-                    </div>
-                    <Badge variant="teal">{o.role.replace('_', ' ')}</Badge>
+            <>
+              {(memberships?.organizations ?? []).length > 0 && (
+                <div className="ws-section" style={{ marginBottom: '1.5rem' }}>
+                  <h3 className="ws-section__title" style={{ fontSize: '1rem', marginBottom: '1rem' }}>
+                    Organizations
+                  </h3>
+                  <div className="ws-grid">
+                    {(memberships?.organizations ?? []).map((o) => (
+                      <div key={`org-${o.id}`} className="ws-card" style={{ cursor: 'default' }}>
+                        <div className="ws-card__head">
+                          <div className="ws-card__icon ws-card__icon--org">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                              <circle cx="10" cy="7" r="3" stroke="currentColor" strokeWidth="1.5" />
+                              <path d="M3 17a7 7 0 0114 0" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                            </svg>
+                          </div>
+                          <Badge variant="teal">{o.role.replace('_', ' ')}</Badge>
+                        </div>
+                        <h3 className="ws-card__title">{o.name}</h3>
+                        <p className="ws-card__desc">Organization membership</p>
+                      </div>
+                    ))}
                   </div>
-                  <h3 className="ws-card__title">{o.name}</h3>
-                  <p className="ws-card__desc">Organization membership</p>
                 </div>
-              ))}
-              {(memberships?.divisions ?? []).map((d) => (
-                <div key={`div-${d.id}`} className="ws-card" style={{ cursor: 'default' }}>
-                  <div className="ws-card__head">
-                    <div className="ws-card__icon ws-card__icon--div">
-                      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                        <path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
-                      </svg>
-                    </div>
-                    <Badge variant="teal">{d.role.replace('_', ' ')}</Badge>
+              )}
+              {(hasDivisions || hasProjects) && (
+                <div className="ws-section">
+                  <h3 className="ws-section__title" style={{ fontSize: '1rem', marginBottom: '1rem' }}>
+                    Divisions & Projects
+                  </h3>
+                  <div className="ws-grid">
+                    {(memberships?.divisions ?? []).map((d) => (
+                      <div key={`div-${d.id}`} className="ws-card" style={{ cursor: 'default' }}>
+                        <div className="ws-card__head">
+                          <div className="ws-card__icon ws-card__icon--div">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                              <path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+                            </svg>
+                          </div>
+                          <Badge variant="teal">{d.role.replace('_', ' ')}</Badge>
+                        </div>
+                        <h3 className="ws-card__title">{d.name}</h3>
+                        <p className="ws-card__desc">Division membership</p>
+                      </div>
+                    ))}
+                    {(memberships?.projects ?? []).map((p) => (
+                      <div key={`proj-${p.id}`} className="ws-card" style={{ cursor: 'default' }}>
+                        <div className="ws-card__head">
+                          <div className="ws-card__icon ws-card__icon--proj">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                              <rect x="3" y="3" width="14" height="14" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+                              <path d="M3 7h14M7 3v4" stroke="currentColor" strokeWidth="1.5"/>
+                            </svg>
+                          </div>
+                          <Badge variant="teal">{p.role.replace('_', ' ')}</Badge>
+                        </div>
+                        <h3 className="ws-card__title">{p.name}</h3>
+                        <p className="ws-card__desc">Project membership</p>
+                      </div>
+                    ))}
                   </div>
-                  <h3 className="ws-card__title">{d.name}</h3>
-                  <p className="ws-card__desc">Division membership</p>
                 </div>
-              ))}
-              {(memberships?.projects ?? []).map((p) => (
-                <div key={`proj-${p.id}`} className="ws-card" style={{ cursor: 'default' }}>
-                  <div className="ws-card__head">
-                    <div className="ws-card__icon ws-card__icon--proj">
-                      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                        <rect x="3" y="3" width="14" height="14" rx="2" stroke="currentColor" strokeWidth="1.5"/>
-                        <path d="M3 7h14M7 3v4" stroke="currentColor" strokeWidth="1.5"/>
-                      </svg>
-                    </div>
-                    <Badge variant="teal">{p.role.replace('_', ' ')}</Badge>
-                  </div>
-                  <h3 className="ws-card__title">{p.name}</h3>
-                  <p className="ws-card__desc">Project membership</p>
-                </div>
-              ))}
-            </div>
+              )}
+            </>
           )
         )}
       </div>
 
       {adminOrgId !== undefined && (
-        <>
-          <CreateDivisionModal
-            open={createDivisionOpen}
-            onClose={() => setCreateDivisionOpen(false)}
-            organizationId={adminOrgId}
-          />
-          <CreateAnnouncementModal
-            open={createAnnouncementOpen}
-            onClose={() => setCreateAnnouncementOpen(false)}
-            organizationId={adminOrgId}
-            organizationName={adminOrgs.find((o) => o.id === adminOrgId)?.name}
-          />
-        </>
+        <CreateDivisionModal
+          open={createDivisionOpen}
+          onClose={() => setCreateDivisionOpen(false)}
+          organizationId={adminOrgId}
+        />
       )}
     </AppShell>
   );

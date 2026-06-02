@@ -3,16 +3,19 @@ import { queryKeys } from '../../lib/queryClient';
 import {
   createOrganization,
   inviteToOrganization,
+  listOrgMembers,
   listOrganizations,
 } from '../../services/organizations';
 import {
   createDivision,
   inviteToDivision,
+  listDivisionMembers,
   listDivisions,
 } from '../../services/divisions';
 import {
   createProject,
   inviteToProject,
+  listProjectMembers,
   listProjects,
 } from '../../services/projects';
 
@@ -89,5 +92,29 @@ export function useInviteToProject(projectId: number) {
   return useMutation({
     mutationFn: (input: Parameters<typeof inviteToProject>[1]) =>
       inviteToProject(projectId, input),
+  });
+}
+
+export function useOrganizationMembers(orgId: number | undefined) {
+  return useQuery({
+    queryKey: queryKeys.orgMembers(orgId ?? -1),
+    queryFn: () => listOrgMembers(orgId as number),
+    enabled: Boolean(orgId),
+  });
+}
+
+export function useDivisionMembers(divisionId: number | undefined) {
+  return useQuery({
+    queryKey: queryKeys.divMembers(divisionId ?? -1),
+    queryFn: () => listDivisionMembers(divisionId as number),
+    enabled: Boolean(divisionId),
+  });
+}
+
+export function useProjectMembers(projectId: number | undefined) {
+  return useQuery({
+    queryKey: queryKeys.projMembers(projectId ?? -1),
+    queryFn: () => listProjectMembers(projectId as number),
+    enabled: Boolean(projectId),
   });
 }

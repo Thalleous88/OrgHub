@@ -191,9 +191,9 @@ export default function LoginPage() {
               )}
             </button>
           </form>
-
+            
           <p className="login-card__help">
-            Need technical help? <a href="#support">Contact Support</a>
+            Do not have an account?  <a href="register">Register Now</a>
           </p>
         </div>
       </div>

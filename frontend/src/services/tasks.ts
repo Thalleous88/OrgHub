@@ -8,7 +8,7 @@ export interface TaskCreateInput {
   description?: string;
   status?: TaskStatus;
   due_at?: string | null;
-  assigned_to: number;
+  assigned_emails: string[];
 }
 
 export interface TaskUpdateInput {
@@ -16,7 +16,7 @@ export interface TaskUpdateInput {
   description?: string;
   status?: TaskStatus;
   due_at?: string | null;
-  assigned_to?: number;
+  assigned_emails?: string[];
   division?: number;
   project?: number;
 }

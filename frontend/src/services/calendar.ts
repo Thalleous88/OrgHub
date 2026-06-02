@@ -8,6 +8,8 @@ export interface CalendarEventCreateInput {
   location?: string;
   starts_at: string;
   ends_at?: string | null;
+  assigned_emails?: string[];
+  assigned_division_ids?: number[];
 }
 
 export type CalendarEventUpdateInput = Partial<CalendarEventCreateInput>;

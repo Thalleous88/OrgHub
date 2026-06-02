@@ -160,8 +160,8 @@ export interface DashboardTask {
   due_at: string | null;
   created_by: number;
   created_by_email: string;
-  assigned_to: number | null;
-  assigned_to_email: string | null;
+  assigned_to: number[];
+  assigned_to_emails: string[];
   created_at: string;
   updated_at: string;
 }

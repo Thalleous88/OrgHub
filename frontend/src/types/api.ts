@@ -16,6 +16,16 @@ export interface Profile {
   campus_location: string;
 }
 
+export interface MemberItem {
+  id: number;
+  user_id: number;
+  email: string;
+  full_name: string;
+  role: string;
+  is_active: boolean;
+  joined_at: string;
+}
+
 export interface OrgMembershipSummary {
   id: number;
   name: string;
@@ -102,8 +112,8 @@ export interface Task {
   due_at: string | null;
   created_by: number;
   created_by_email: string;
-  assigned_to: number | null;
-  assigned_to_email: string | null;
+  assigned_to: number[];
+  assigned_to_emails: string[];
   created_at: string;
   updated_at: string;
 }
@@ -123,6 +133,10 @@ export interface CalendarEvent {
   ends_at: string | null;
   created_by: number;
   created_by_email: string;
+  assigned_to: number[];
+  assigned_to_emails: string[];
+  assigned_divisions: number[];
+  assigned_division_names: string[];
   created_at: string;
   updated_at: string;
 }

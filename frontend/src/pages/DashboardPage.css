@@ -116,17 +116,8 @@
 
 .dashboard-bottom-row {
   display: grid;
-  grid-template-columns: 1.2fr 1fr;
+  grid-template-columns: 1fr;
   gap: 1.25rem;
-}
-
-.dashboard-bottom-row__right {
-  background: var(--surface-glass);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--border-primary);
-  border-radius: var(--radius-lg);
-  padding: 1.5rem;
 }
 
 @media (max-width: 1024px) {

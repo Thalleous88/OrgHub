@@ -70,6 +70,7 @@ export default function DeadlineCard({ tasks }: DeadlineCardProps) {
                   <span className="deadline-item__title">{task.title}</span>
                   <span className="deadline-item__meta">
                     {task.project ? 'Project' : 'Division'} • {formatDate(task.due_at)}
+                    {(task.assigned_to_emails ?? []).length > 0 && ` • ${task.assigned_to_emails.map(e => e.split('@')[0]).join(', ')}`}
                   </span>
                 </div>
                 <span className={`deadline-tag ${urgency.className}`}>{urgency.label}</span>

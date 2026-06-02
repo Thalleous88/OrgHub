@@ -1,5 +1,5 @@
 import { request } from '../lib/fetcher';
-import type { Invitation, InvitationRole, Organization } from '../types/api';
+import type { Invitation, InvitationRole, MemberItem, Organization } from '../types/api';
 
 export async function listOrganizations(): Promise<Organization[]> {
   return request<Organization[]>('/organizations/');
@@ -15,11 +15,15 @@ export async function createOrganization(input: {
   });
 }
 
+export async function listOrgMembers(organizationId: number): Promise<MemberItem[]> {
+  return request<MemberItem[]>(`/organizations/${organizationId}/members/`);
+}
+
 export async function inviteToOrganization(
   organizationId: number,
-  input: { email: string; role: 'CORE_BOARD' | 'MEMBER'; expires_at?: string },
-): Promise<Invitation> {
-  return request<Invitation>(`/organizations/${organizationId}/invite/`, {
+  input: { emails: string[]; role: 'CORE_BOARD' | 'MEMBER'; expires_at?: string },
+): Promise<Invitation[] | { invitations: Invitation[]; errors: unknown[] }> {
+  return request('/organizations/' + organizationId + '/invite/', {
     method: 'POST',
     body: input,
   });

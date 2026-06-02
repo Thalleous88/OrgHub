@@ -1,4 +1,8 @@
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { DashboardAnnouncement } from '../services/api';
+import AnnouncementDetailModal from './announcements/AnnouncementDetailModal';
+import type { Announcement } from '../types/api';
 import './GeneralFeed.css';
 
 interface GeneralFeedProps {
@@ -39,9 +43,24 @@ function getInitials(email: string): string {
 }
 
 export default function GeneralFeed({ announcements }: GeneralFeedProps) {
+  const navigate = useNavigate();
+  const [selectedAnn, setSelectedAnn] = useState<Announcement | null>(null);
+
   const sortedAnnouncements = [...announcements]
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .slice(0, 5);
+
+  const toAnnouncement = (a: DashboardAnnouncement): Announcement => ({
+    id: a.id,
+    organization: a.organization,
+    title: a.title,
+    content: a.content,
+    priority: a.priority,
+    created_by: a.created_by,
+    created_by_email: a.created_by_email,
+    created_at: a.created_at,
+    updated_at: a.updated_at,
+  });
 
   return (
     <div className="general-feed animate-fade-in-up delay-5" id="feed-widget">
@@ -60,7 +79,20 @@ export default function GeneralFeed({ announcements }: GeneralFeedProps) {
       ) : (
         <div className="general-feed__list">
           {sortedAnnouncements.map((ann) => (
-            <div key={ann.id} className="feed-item">
+            <div
+              key={ann.id}
+              className="feed-item"
+              style={{ cursor: 'pointer' }}
+              onClick={() => setSelectedAnn(toAnnouncement(ann))}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setSelectedAnn(toAnnouncement(ann));
+                }
+              }}
+            >
               <div className="feed-item__avatar">
                 {getInitials(ann.created_by_email)}
               </div>
@@ -81,10 +113,20 @@ export default function GeneralFeed({ announcements }: GeneralFeedProps) {
       )}
 
       {announcements.length > 5 && (
-        <button className="general-feed__view-all" id="view-all-broadcasts">
+        <button
+          className="general-feed__view-all"
+          id="view-all-broadcasts"
+          onClick={() => navigate('/announcements')}
+        >
           View All Broadcasts
         </button>
       )}
+
+      <AnnouncementDetailModal
+        open={selectedAnn !== null}
+        announcement={selectedAnn}
+        onClose={() => setSelectedAnn(null)}
+      />
     </div>
   );
 }

@@ -19,8 +19,11 @@ export const queryKeys = {
   profile: ['profile'] as const,
   dashboard: ['dashboard'] as const,
   organizations: ['organizations'] as const,
+  orgMembers: (orgId: number) => ['organizations', orgId, 'members'] as const,
   divisions: ['divisions'] as const,
+  divMembers: (divId: number) => ['divisions', divId, 'members'] as const,
   projects: ['projects'] as const,
+  projMembers: (projId: number) => ['projects', projId, 'members'] as const,
   tasks: ['tasks'] as const,
   task: (id: number) => ['tasks', id] as const,
   calendar: (window?: { starts_after?: string; starts_before?: string }) =>

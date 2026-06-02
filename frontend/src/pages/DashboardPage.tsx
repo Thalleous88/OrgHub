@@ -4,7 +4,6 @@ import { useDashboard } from '../hooks/queries/useDashboard';
 import { AppShell } from '../components/layout/AppShell';
 import DeadlineCard from '../components/DeadlineCard';
 import MeetingCard from '../components/MeetingCard';
-import ResourceGrid from '../components/ResourceGrid';
 import GeneralFeed from '../components/GeneralFeed';
 import { getApiErrorMessage } from '../lib/apiError';
 import './DashboardPage.css';
@@ -92,12 +91,7 @@ export default function DashboardPage() {
 
           {/* Bottom Content Row */}
           <div className="dashboard-bottom-row">
-            <div className="dashboard-bottom-row__left">
-              <ResourceGrid documents={dashboard?.documents || []} />
-            </div>
-            <div className="dashboard-bottom-row__right">
-              <GeneralFeed announcements={dashboard?.announcements || []} />
-            </div>
+            <GeneralFeed announcements={dashboard?.announcements || []} />
           </div>
         </>
       )}

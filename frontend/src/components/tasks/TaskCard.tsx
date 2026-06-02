@@ -48,6 +48,9 @@ export default function TaskCard({
   onDragEnd,
 }: TaskCardProps) {
   const urgency = urgencyOf(task.due_at, task.status);
+  const assigneeNames = (task.assigned_to_emails ?? [])
+    .map((e) => e.split('@')[0])
+    .join(', ') || 'Unassigned';
 
   return (
     <div
@@ -68,8 +71,12 @@ export default function TaskCard({
       <div className="task-card__title">{task.title}</div>
       <div className="task-card__meta">
         <span className="task-card__assignee">
-          <span className="task-card__avatar">{initials(task.assigned_to_email)}</span>
-          <span>{task.assigned_to_email?.split('@')[0] ?? 'Unassigned'}</span>
+          <span className="task-card__avatar">
+            {(task.assigned_to_emails ?? []).length > 0
+              ? initials(task.assigned_to_emails[0])
+              : '?'}
+          </span>
+          <span>{assigneeNames}</span>
         </span>
         {task.due_at && <span>{formatDue(task.due_at)}</span>}
         {urgency && <Badge variant={urgency.variant}>{urgency.label}</Badge>}

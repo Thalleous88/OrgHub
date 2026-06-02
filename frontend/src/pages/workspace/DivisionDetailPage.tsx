@@ -24,6 +24,7 @@ import {
   useDivisions,
   useOrganizations,
   useProjects,
+  useDivisionMembers,
 } from '../../hooks/queries/useWorkspace';
 import { useTasks } from '../../hooks/queries/useTasks';
 import { useScopeCalendar } from '../../hooks/queries/useCalendar';
@@ -34,14 +35,14 @@ import { useAuth } from '../../context/AuthContext';
 import type { Task } from '../../types/api';
 import '../../components/workspace/WorkspaceCards.css';
 
-type TabKey = 'projects' | 'tasks' | 'calendar' | 'files';
+type TabKey = 'projects' | 'tasks' | 'calendar' | 'files' | 'members';
 
 export default function DivisionDetailPage() {
   const { divisionId: divisionIdParam } = useParams<{ divisionId: string }>();
   const divisionId = Number(divisionIdParam);
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { canManageDivision, isCoreBoard, divisionRole, memberships } = useWorkspace();
+  const { canManageDivision, isCoreBoard, isDivisionMember, divisionRole, memberships } = useWorkspace();
 
   const { data: divisions, isLoading: divsLoading } = useDivisions();
   const { data: organizations } = useOrganizations();
@@ -86,6 +87,7 @@ export default function DivisionDetailPage() {
 
   const orgIsCoreBoard = organization ? isCoreBoard(organization.id) : false;
   const canManage = organization ? canManageDivision(organization.id, divisionId) : false;
+  const isMember = isDivisionMember(divisionId);
   const role = divisionRole(divisionId);
 
   const { data: calendarEvents = [] } = useScopeCalendar(
@@ -95,6 +97,9 @@ export default function DivisionDetailPage() {
   const { data: documents = [] } = useScopeDocuments(
     'divisions',
     tab === 'files' ? divisionId : undefined,
+  );
+  const { data: divMembers, isLoading: membersLoading } = useDivisionMembers(
+    tab === 'members' ? divisionId : undefined,
   );
 
   if (divsLoading) {
@@ -159,6 +164,7 @@ export default function DivisionDetailPage() {
           { key: 'tasks', label: 'Tasks' },
           { key: 'calendar', label: 'Calendar' },
           { key: 'files', label: 'Resources' },
+          { key: 'members', label: 'Members' },
         ]}
       />
 
@@ -195,7 +201,7 @@ export default function DivisionDetailPage() {
         {tab === 'tasks' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              {orgIsCoreBoard && (
+              {isMember && (
                 <Button variant="primary" size="sm" onClick={() => setCreateTaskOpen(true)}>
                   New division task
                 </Button>
@@ -251,6 +257,59 @@ export default function DivisionDetailPage() {
             )}
           </div>
         )}
+
+        {tab === 'members' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {canManage && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <Button variant="secondary" size="sm" onClick={() => setInviteOpen(true)}>
+                  Invite member
+                </Button>
+              </div>
+            )}
+            {membersLoading ? (
+              <Spinner />
+            ) : !divMembers || divMembers.length === 0 ? (
+              <EmptyState
+                title="No members yet"
+                description="Division members will appear here once they join."
+              />
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '2px solid var(--border-subtle)', textAlign: 'left' }}>
+                      <th style={{ padding: '0.5rem 0.75rem' }}>Name</th>
+                      <th style={{ padding: '0.5rem 0.75rem' }}>Email</th>
+                      <th style={{ padding: '0.5rem 0.75rem' }}>Role</th>
+                      <th style={{ padding: '0.5rem 0.75rem' }}>Joined</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {divMembers.map((m) => (
+                      <tr key={m.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                        <td style={{ padding: '0.5rem 0.75rem' }}>
+                          {m.full_name || <span style={{ color: 'var(--text-muted)' }}>—</span>}
+                        </td>
+                        <td style={{ padding: '0.5rem 0.75rem', color: 'var(--text-muted)' }}>
+                          {m.email}
+                        </td>
+                        <td style={{ padding: '0.5rem 0.75rem' }}>
+                          <Badge variant={m.role === 'DIVISION_HEAD' ? 'teal' : 'gray'}>
+                            {m.role.replace('_', ' ')}
+                          </Badge>
+                        </td>
+                        <td style={{ padding: '0.5rem 0.75rem', color: 'var(--text-muted)' }}>
+                          {new Date(m.joined_at).toLocaleDateString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <CreateProjectModal
@@ -265,6 +324,7 @@ export default function DivisionDetailPage() {
         scope="divisions"
         scopeId={divisionId}
         scopeName={division.name}
+        parentScopeId={organization.id}
       />
       <CreateTaskModal
         open={createTaskOpen}

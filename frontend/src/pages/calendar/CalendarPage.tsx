@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { AppShell } from '../../components/layout/AppShell';
 import { PageHeader, Button, Spinner, Select, Field } from '../../components/ui';
 import CreateEventModal from '../../components/calendar/CreateEventModal';
+import EventDetailModal from '../../components/calendar/EventDetailModal';
 import { useCalendarWindow } from '../../hooks/queries/useCalendar';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import type { CalendarEvent, EventType, Scope } from '../../types/api';
@@ -44,6 +45,7 @@ export default function CalendarPage() {
   const [cursor, setCursor] = useState<Date>(new Date());
   const [createOpen, setCreateOpen] = useState(false);
   const [createDate, setCreateDate] = useState<Date | undefined>(undefined);
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
 
   const defaultScope = useMemo<{ scope: Scope; id: number; name: string } | null>(() => {
     const projLead = memberships.projects.find((p) => p.role === 'PROJECT_LEAD');
@@ -219,11 +221,11 @@ export default function CalendarPage() {
       {isLoading ? (
         <Spinner />
       ) : view === 'month' ? (
-        <MonthView cursor={cursor} eventsByDay={eventsByDay} onCellClick={openCreate} />
+        <MonthView cursor={cursor} eventsByDay={eventsByDay} onCellClick={openCreate} onEventClick={setSelectedEvent} />
       ) : view === 'week' ? (
-        <WeekView cursor={cursor} events={events} onCellClick={openCreate} />
+        <WeekView cursor={cursor} events={events} onCellClick={openCreate} onEventClick={setSelectedEvent} />
       ) : (
-        <DayView cursor={cursor} events={events} onCellClick={openCreate} />
+        <DayView cursor={cursor} events={events} onCellClick={openCreate} onEventClick={setSelectedEvent} />
       )}
 
       {selectedScope && (
@@ -236,6 +238,12 @@ export default function CalendarPage() {
           defaultDate={createDate}
         />
       )}
+
+      <EventDetailModal
+        open={selectedEvent !== null}
+        event={selectedEvent}
+        onClose={() => setSelectedEvent(null)}
+      />
     </AppShell>
   );
 }
@@ -244,10 +252,12 @@ function MonthView({
   cursor,
   eventsByDay,
   onCellClick,
+  onEventClick,
 }: {
   cursor: Date;
   eventsByDay: Map<string, CalendarEvent[]>;
   onCellClick: (date: Date) => void;
+  onEventClick: (event: CalendarEvent) => void;
 }) {
   const start = calendarMonthGridStart(cursor);
   const cells: Date[] = [];
@@ -274,7 +284,11 @@ function MonthView({
             <span className="cal-month__num">{d.getDate()}</span>
             <div className="cal-month__events">
               {events.slice(0, 3).map((ev) => (
-                <span key={ev.id} className={`cal-event-chip ${chipClass(ev.event_type)}`}>
+                <span
+                  key={ev.id}
+                  className={`cal-event-chip ${chipClass(ev.event_type)}`}
+                  onClick={(e) => { e.stopPropagation(); onEventClick(ev); }}
+                >
                   {new Date(ev.starts_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} {ev.title}
                 </span>
               ))}
@@ -293,10 +307,12 @@ function WeekView({
   cursor,
   events,
   onCellClick,
+  onEventClick,
 }: {
   cursor: Date;
   events: CalendarEvent[];
   onCellClick: (date: Date) => void;
+  onEventClick: (event: CalendarEvent) => void;
 }) {
   const weekStart = startOfWeek(cursor);
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
@@ -345,7 +361,7 @@ function WeekView({
                         color: colors.color,
                       }}
                       title={ev.title}
-                      onClick={(e) => e.stopPropagation()}
+                      onClick={(e) => { e.stopPropagation(); onEventClick(ev); }}
                     >
                       {ev.title}
                     </div>
@@ -374,10 +390,12 @@ function DayView({
   cursor,
   events,
   onCellClick,
+  onEventClick,
 }: {
   cursor: Date;
   events: CalendarEvent[];
   onCellClick: (date: Date) => void;
+  onEventClick: (event: CalendarEvent) => void;
 }) {
   const today = new Date();
   return (
@@ -416,7 +434,7 @@ function DayView({
                       borderColor: colors.border,
                       color: colors.color,
                     }}
-                    onClick={(e) => e.stopPropagation()}
+                    onClick={(e) => { e.stopPropagation(); onEventClick(ev); }}
                   >
                     {new Date(ev.starts_at).toLocaleTimeString('en-US', {
                       hour: '2-digit',

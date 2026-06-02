@@ -22,6 +22,7 @@ import {
   useDivisions,
   useOrganizations,
   useProjects,
+  useProjectMembers,
 } from '../../hooks/queries/useWorkspace';
 import { useTasks } from '../../hooks/queries/useTasks';
 import { useScopeCalendar } from '../../hooks/queries/useCalendar';
@@ -31,14 +32,14 @@ import { useAuth } from '../../context/AuthContext';
 import type { Task } from '../../types/api';
 import '../../components/workspace/WorkspaceCards.css';
 
-type TabKey = 'tasks' | 'calendar' | 'files';
+type TabKey = 'tasks' | 'calendar' | 'files' | 'members';
 
 export default function ProjectDetailPage() {
   const { projectId: projectIdParam } = useParams<{ projectId: string }>();
   const projectId = Number(projectIdParam);
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { canManageProject, projectRole } = useWorkspace();
+  const { canManageProject, isProjectMember, projectRole } = useWorkspace();
 
   const { data: projects, isLoading: projsLoading } = useProjects();
   const { data: divisions } = useDivisions();
@@ -73,6 +74,7 @@ export default function ProjectDetailPage() {
   const role = projectRole(projectId);
   const canManage =
     organization && division ? canManageProject(organization.id, division.id, projectId) : false;
+  const isMember = isProjectMember(projectId);
 
   const { data: calendarEvents = [] } = useScopeCalendar(
     'projects',
@@ -81,6 +83,9 @@ export default function ProjectDetailPage() {
   const { data: documents = [] } = useScopeDocuments(
     'projects',
     tab === 'files' ? projectId : undefined,
+  );
+  const { data: projMembers, isLoading: membersLoading } = useProjectMembers(
+    tab === 'members' ? projectId : undefined,
   );
 
   if (projsLoading) {
@@ -129,7 +134,7 @@ export default function ProjectDetailPage() {
                 Invite member
               </Button>
             )}
-            {canManage && (
+            {isMember && (
               <Button variant="primary" onClick={() => setCreateTaskOpen(true)}>
                 New task
               </Button>
@@ -145,6 +150,7 @@ export default function ProjectDetailPage() {
           { key: 'tasks', label: 'Tasks' },
           { key: 'calendar', label: 'Calendar' },
           { key: 'files', label: 'Resources' },
+          { key: 'members', label: 'Members' },
         ]}
       />
 
@@ -154,7 +160,7 @@ export default function ProjectDetailPage() {
             <EmptyState
               title="No tasks yet"
               description={canManage ? 'Create your first task to get the team moving.' : 'Tasks will appear here as they are created.'}
-              action={canManage ? (
+              action={isMember ? (
                 <Button variant="primary" size="sm" onClick={() => setCreateTaskOpen(true)}>Create task</Button>
               ) : undefined}
             />
@@ -196,6 +202,59 @@ export default function ProjectDetailPage() {
             )}
           </div>
         )}
+
+        {tab === 'members' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {canManage && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <Button variant="secondary" size="sm" onClick={() => setInviteOpen(true)}>
+                  Invite member
+                </Button>
+              </div>
+            )}
+            {membersLoading ? (
+              <Spinner />
+            ) : !projMembers || projMembers.length === 0 ? (
+              <EmptyState
+                title="No members yet"
+                description="Project members will appear here once they join."
+              />
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '2px solid var(--border-subtle)', textAlign: 'left' }}>
+                      <th style={{ padding: '0.5rem 0.75rem' }}>Name</th>
+                      <th style={{ padding: '0.5rem 0.75rem' }}>Email</th>
+                      <th style={{ padding: '0.5rem 0.75rem' }}>Role</th>
+                      <th style={{ padding: '0.5rem 0.75rem' }}>Joined</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {projMembers.map((m) => (
+                      <tr key={m.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                        <td style={{ padding: '0.5rem 0.75rem' }}>
+                          {m.full_name || <span style={{ color: 'var(--text-muted)' }}>—</span>}
+                        </td>
+                        <td style={{ padding: '0.5rem 0.75rem', color: 'var(--text-muted)' }}>
+                          {m.email}
+                        </td>
+                        <td style={{ padding: '0.5rem 0.75rem' }}>
+                          <Badge variant={m.role === 'PROJECT_LEAD' ? 'teal' : 'gray'}>
+                            {m.role.replace('_', ' ')}
+                          </Badge>
+                        </td>
+                        <td style={{ padding: '0.5rem 0.75rem', color: 'var(--text-muted)' }}>
+                          {new Date(m.joined_at).toLocaleDateString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <InviteMemberModal
@@ -204,6 +263,8 @@ export default function ProjectDetailPage() {
         scope="projects"
         scopeId={projectId}
         scopeName={project.name}
+        parentScopeId={division.id}
+        orgId={organization.id}
       />
       <CreateTaskModal
         open={createTaskOpen}

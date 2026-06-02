@@ -16,6 +16,7 @@ import InviteMemberModal from '../../components/workspace/InviteMemberModal';
 import AnnouncementsList from '../../components/announcements/AnnouncementsList';
 import CreateAnnouncementModal from '../../components/announcements/CreateAnnouncementModal';
 import { useOrganizations, useDivisions } from '../../hooks/queries/useWorkspace';
+import { useOrganizationMembers } from '../../hooks/queries/useWorkspace';
 import { useDashboard } from '../../hooks/queries/useDashboard';
 import {
   useOrganizationAnnouncements,
@@ -58,6 +59,10 @@ export default function OrganizationDetailPage() {
 
   const { data: announcements, isLoading: annLoading } = useOrganizationAnnouncements(
     tab === 'announcements' ? orgId : undefined,
+  );
+
+  const { data: orgMembers, isLoading: membersLoading } = useOrganizationMembers(
+    tab === 'members' ? orgId : undefined,
   );
 
   if (orgsLoading) {
@@ -178,26 +183,55 @@ export default function OrganizationDetailPage() {
         )}
 
         {tab === 'members' && (
-          <div className="ws-grid">
-            {memberships.organizations
-              .filter((o) => o.id === orgId)
-              .map((o) => (
-                <div key={o.id} className="ws-card" style={{ cursor: 'default' }}>
-                  <div className="ws-card__head">
-                    <div className="ws-card__icon ws-card__icon--org">
-                      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                        <circle cx="10" cy="7" r="3" stroke="currentColor" strokeWidth="1.5" />
-                        <path d="M3 17a7 7 0 0114 0" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                      </svg>
-                    </div>
-                    <Badge variant="teal">{o.role.replace('_', ' ')}</Badge>
-                  </div>
-                  <h3 className="ws-card__title">You</h3>
-                  <p className="ws-card__desc">
-                    Member-list endpoints are not exposed by the API yet. Use invitations to add members.
-                  </p>
-                </div>
-              ))}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {isAdmin && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <Button variant="secondary" size="sm" onClick={() => setInviteOpen(true)}>
+                  Invite member
+                </Button>
+              </div>
+            )}
+            {membersLoading ? (
+              <Spinner />
+            ) : !orgMembers || orgMembers.length === 0 ? (
+              <EmptyState
+                title="No members yet"
+                description="Members will appear here once they join."
+              />
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '2px solid var(--border-subtle)', textAlign: 'left' }}>
+                      <th style={{ padding: '0.5rem 0.75rem' }}>Name</th>
+                      <th style={{ padding: '0.5rem 0.75rem' }}>Email</th>
+                      <th style={{ padding: '0.5rem 0.75rem' }}>Role</th>
+                      <th style={{ padding: '0.5rem 0.75rem' }}>Joined</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {orgMembers.map((m) => (
+                      <tr key={m.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                        <td style={{ padding: '0.5rem 0.75rem' }}>
+                          {m.full_name || <span style={{ color: 'var(--text-muted)' }}>—</span>}
+                        </td>
+                        <td style={{ padding: '0.5rem 0.75rem', color: 'var(--text-muted)' }}>
+                          {m.email}
+                        </td>
+                        <td style={{ padding: '0.5rem 0.75rem' }}>
+                          <Badge variant={m.role === 'CORE_BOARD' ? 'teal' : 'gray'}>
+                            {m.role.replace('_', ' ')}
+                          </Badge>
+                        </td>
+                        <td style={{ padding: '0.5rem 0.75rem', color: 'var(--text-muted)' }}>
+                          {new Date(m.joined_at).toLocaleDateString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
       </div>

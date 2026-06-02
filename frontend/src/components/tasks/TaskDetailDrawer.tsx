@@ -26,7 +26,7 @@ export default function TaskDetailDrawer({ open, task, currentUserId, onClose }:
   const deleteMut = useDeleteTask();
 
   const isCreator = task ? task.created_by === currentUserId : false;
-  const isAssignee = task ? task.assigned_to === currentUserId : false;
+  const isAssignee = task ? (task.assigned_to ?? []).includes(currentUserId ?? -1) : false;
   const canEdit = isCreator;
   const canChangeStatus = isCreator || isAssignee;
 
@@ -84,6 +84,10 @@ export default function TaskDetailDrawer({ open, task, currentUserId, onClose }:
     }
   };
 
+  const assigneeNames = (task.assigned_to_emails ?? [])
+    .map((e) => e.split('@')[0])
+    .join(', ') || 'Unassigned';
+
   return (
     <Drawer open={open} onClose={onClose}>
       <div className="task-drawer">
@@ -98,8 +102,8 @@ export default function TaskDetailDrawer({ open, task, currentUserId, onClose }:
                 {status === 'Done' ? 'Done' : status === 'InProgress' ? 'In Progress' : 'To Do'}
               </Badge>
               <Badge variant="neutral">Created by {task.created_by_email.split('@')[0]}</Badge>
-              {task.assigned_to_email && (
-                <Badge variant="neutral">Assigned to {task.assigned_to_email.split('@')[0]}</Badge>
+              {(task.assigned_to_emails ?? []).length > 0 && (
+                <Badge variant="neutral">Assigned to {assigneeNames}</Badge>
               )}
             </div>
           </div>

@@ -1,4 +1,5 @@
 from django.contrib.auth import authenticate, get_user_model
+from django.db import transaction
 from rest_framework import serializers
 
 from .models import (
@@ -18,6 +19,7 @@ from .models import (
 )
 from .permissions import (
     can_assign_task,
+    can_create_task,
     can_manage_calendar_scope,
     can_manage_division,
     can_manage_project_members,
@@ -109,12 +111,22 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         email = validated_data["email"]
-        user = User.objects.create_user(
-            username=email,
-            email=email,
-            password=validated_data["password"],
-        )
-        Profile.objects.create(user=user)
+        with transaction.atomic():
+            user = User.objects.create_user(
+                username=email,
+                email=email,
+                password=validated_data["password"],
+            )
+            Profile.objects.create(user=user)
+            pending_invitations = Invitation.objects.filter(
+                email__iexact=email,
+                status=Invitation.Status.PENDING,
+            ).select_related("organization", "division__organization", "project__division__organization")
+            for invitation in pending_invitations:
+                try:
+                    invitation.accept(user)
+                except Exception:
+                    pass
         return user
 
 
@@ -280,18 +292,18 @@ class InvitationCreateSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError("Invalid project role.")
             if not can_manage_project_members(user, scope):
                 raise serializers.ValidationError(
-                    "Only Core Board or Division Heads can invite project members."
+                    "Only Core Board, Division Heads, or Project Leads can invite project members."
                 )
             invited_user = User.objects.filter(
                 email__iexact=attrs["email"].strip().lower()
             ).first()
-            if not invited_user or not DivisionMembership.objects.filter(
+            if not invited_user or not OrganizationMembership.objects.filter(
                 user=invited_user,
-                division=scope.division,
+                organization=scope.division.organization,
                 is_active=True,
             ).exists():
                 raise serializers.ValidationError(
-                    "Project invitees must already belong to the parent division."
+                    "Project invitees must already be members of the organization."
                 )
 
         return attrs
@@ -321,6 +333,36 @@ class InvitationAcceptSerializer(serializers.Serializer):
         invitation = self.validated_data["token"]
         invitation.accept(self.context["request"].user)
         return invitation
+
+
+class OrganizationMembershipSerializer(serializers.ModelSerializer):
+    email = serializers.EmailField(source="user.email", read_only=True)
+    full_name = serializers.CharField(source="user.profile.full_name", read_only=True)
+
+    class Meta:
+        model = OrganizationMembership
+        fields = ["id", "user_id", "email", "full_name", "role", "is_active", "joined_at"]
+
+    def get_full_name(self, obj):
+        return getattr(getattr(obj.user, "profile", None), "full_name", "")
+
+
+class DivisionMembershipSerializer(serializers.ModelSerializer):
+    email = serializers.EmailField(source="user.email", read_only=True)
+    full_name = serializers.CharField(source="user.profile.full_name", read_only=True)
+
+    class Meta:
+        model = DivisionMembership
+        fields = ["id", "user_id", "email", "full_name", "role", "is_active", "joined_at"]
+
+
+class ProjectMembershipSerializer(serializers.ModelSerializer):
+    email = serializers.EmailField(source="user.email", read_only=True)
+    full_name = serializers.CharField(source="user.profile.full_name", read_only=True)
+
+    class Meta:
+        model = ProjectMembership
+        fields = ["id", "user_id", "email", "full_name", "role", "is_active", "joined_at"]
 
 
 class ResourceDocumentSerializer(serializers.ModelSerializer):
@@ -434,6 +476,20 @@ class CalendarEventSerializer(serializers.ModelSerializer):
     calendar_scope = serializers.CharField(read_only=True)
     calendar_scope_id = serializers.IntegerField(read_only=True)
     created_by_email = serializers.EmailField(source="created_by.email", read_only=True)
+    assigned_to_emails = serializers.SerializerMethodField()
+    assigned_emails = serializers.ListField(
+        child=serializers.EmailField(),
+        write_only=True,
+        required=False,
+    )
+    assigned_divisions = serializers.PrimaryKeyRelatedField(
+        queryset=Division.objects.all(),
+        many=True,
+        write_only=True,
+        required=False,
+    )
+    assigned_division_ids = serializers.SerializerMethodField()
+    assigned_division_names = serializers.SerializerMethodField()
 
     class Meta:
         model = CalendarEvent
@@ -452,6 +508,12 @@ class CalendarEventSerializer(serializers.ModelSerializer):
             "ends_at",
             "created_by",
             "created_by_email",
+            "assigned_to",
+            "assigned_to_emails",
+            "assigned_emails",
+            "assigned_divisions",
+            "assigned_division_ids",
+            "assigned_division_names",
             "created_at",
             "updated_at",
         ]
@@ -464,9 +526,33 @@ class CalendarEventSerializer(serializers.ModelSerializer):
             "calendar_scope_id",
             "created_by",
             "created_by_email",
+            "assigned_to_emails",
+            "assigned_division_ids",
+            "assigned_division_names",
             "created_at",
             "updated_at",
         ]
+        extra_kwargs = {
+            "assigned_to": {"read_only": True},
+        }
+
+    def get_assigned_to_emails(self, obj):
+        return list(obj.assigned_to.values_list("email", flat=True))
+
+    def get_assigned_division_ids(self, obj):
+        return list(obj.assigned_divisions.values_list("id", flat=True))
+
+    def get_assigned_division_names(self, obj):
+        return list(obj.assigned_divisions.values_list("name", flat=True))
+
+    def validate_assigned_emails(self, value):
+        users = []
+        for email in value:
+            user = User.objects.filter(email__iexact=email.strip().lower()).first()
+            if user is None:
+                raise serializers.ValidationError(f"No user found with email: {email}")
+            users.append(user)
+        return users
 
     def validate(self, attrs):
         scope = self.context.get("scope")
@@ -480,9 +566,37 @@ class CalendarEventSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 "You do not have permission to manage this calendar."
             )
+
+        assigned_divisions = attrs.get("assigned_divisions", [])
+        is_org_scoped = False
+        if instance:
+            is_org_scoped = instance.organization_id is not None and instance.division_id is None and instance.project_id is None
+        elif scope:
+            is_org_scoped = hasattr(scope, "divisions")
+
+        if assigned_divisions and not is_org_scoped:
+            raise serializers.ValidationError(
+                "Assigned divisions can only be set on organization-scoped events."
+            )
+        org_id = None
+        if instance:
+            org_id = instance.organization_id
+        elif scope:
+            if hasattr(scope, "organization_id"):
+                org_id = scope.organization_id
+            elif hasattr(scope, "divisions"):
+                org_id = scope.id
+        for div in assigned_divisions:
+            if div.organization_id != org_id:
+                raise serializers.ValidationError(
+                    f"Division '{div.name}' does not belong to this organization."
+                )
+
         return attrs
 
     def create(self, validated_data):
+        assigned_users = validated_data.pop("assigned_emails", [])
+        assigned_divisions = validated_data.pop("assigned_divisions", [])
         scope = self.context["scope"]
         kwargs = {"created_by": self.context["request"].user, **validated_data}
         if isinstance(scope, Organization):
@@ -491,7 +605,24 @@ class CalendarEventSerializer(serializers.ModelSerializer):
             kwargs["division"] = scope
         else:
             kwargs["project"] = scope
-        return CalendarEvent.objects.create(**kwargs)
+        event = CalendarEvent.objects.create(**kwargs)
+        if assigned_users:
+            event.assigned_to.set(assigned_users)
+        if assigned_divisions:
+            event.assigned_divisions.set(assigned_divisions)
+        return event
+
+    def update(self, instance, validated_data):
+        assigned_users = validated_data.pop("assigned_emails", None)
+        assigned_divisions = validated_data.pop("assigned_divisions", None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        if assigned_users is not None:
+            instance.assigned_to.set(assigned_users)
+        if assigned_divisions is not None:
+            instance.assigned_divisions.set(assigned_divisions)
+        return instance
 
 
 class NotificationSerializer(serializers.ModelSerializer):
@@ -530,7 +661,12 @@ class NotificationSerializer(serializers.ModelSerializer):
 
 class TaskSerializer(serializers.ModelSerializer):
     created_by_email = serializers.EmailField(source="created_by.email", read_only=True)
-    assigned_to_email = serializers.EmailField(source="assigned_to.email", read_only=True)
+    assigned_to_emails = serializers.SerializerMethodField()
+    assigned_emails = serializers.ListField(
+        child=serializers.EmailField(),
+        write_only=True,
+        required=False,
+    )
 
     class Meta:
         model = Task
@@ -545,7 +681,8 @@ class TaskSerializer(serializers.ModelSerializer):
             "created_by",
             "created_by_email",
             "assigned_to",
-            "assigned_to_email",
+            "assigned_to_emails",
+            "assigned_emails",
             "created_at",
             "updated_at",
         ]
@@ -553,17 +690,34 @@ class TaskSerializer(serializers.ModelSerializer):
             "id",
             "created_by",
             "created_by_email",
-            "assigned_to_email",
+            "assigned_to_emails",
             "created_at",
             "updated_at",
         ]
+        extra_kwargs = {
+            "assigned_to": {"read_only": True},
+        }
+
+    def get_assigned_to_emails(self, obj):
+        return list(
+            obj.assigned_to.values_list("email", flat=True)
+        )
+
+    def validate_assigned_emails(self, value):
+        users = []
+        for email in value:
+            user = User.objects.filter(email__iexact=email.strip().lower()).first()
+            if user is None:
+                raise serializers.ValidationError(f"No user found with email: {email}")
+            users.append(user)
+        return users
 
     def validate(self, attrs):
         request = self.context["request"]
         instance = self.instance
         division = attrs.get("division", getattr(instance, "division", None))
         project = attrs.get("project", getattr(instance, "project", None))
-        assigned_to = attrs.get("assigned_to", getattr(instance, "assigned_to", None))
+        assigned_users = attrs.get("assigned_emails", [])
 
         if bool(division) == bool(project):
             raise serializers.ValidationError(
@@ -571,24 +725,49 @@ class TaskSerializer(serializers.ModelSerializer):
             )
 
         if instance is None:
-            if not can_assign_task(request.user, assigned_to, division=division, project=project):
+            if not can_create_task(request.user, division=division, project=project):
                 raise serializers.ValidationError(
-                    "You do not have permission to assign this task."
+                    "You do not have permission to create tasks in this scope."
                 )
+            for user in assigned_users:
+                if not can_assign_task(request.user, user, division=division, project=project):
+                    raise serializers.ValidationError(
+                        f"You do not have permission to assign {user.email}."
+                    )
+            if not assigned_users:
+                if not can_assign_task(request.user, request.user, division=division, project=project):
+                    raise serializers.ValidationError(
+                        "You do not have permission to self-assign in this scope."
+                    )
+                attrs["assigned_emails"] = [request.user]
             return attrs
 
         changed_fields = set(attrs.keys())
         if not can_update_task(request.user, instance, changed_fields):
             raise serializers.ValidationError("You do not have permission to update this task.")
 
-        reassignment_fields = {"division", "project", "assigned_to"}
+        reassignment_fields = {"division", "project", "assigned_emails"}
         if changed_fields & reassignment_fields:
-            if not can_assign_task(request.user, assigned_to, division=division, project=project):
-                raise serializers.ValidationError(
-                    "You do not have permission to reassign this task."
-                )
+            for user in assigned_users:
+                if not can_assign_task(request.user, user, division=division, project=project):
+                    raise serializers.ValidationError(
+                        f"You do not have permission to reassign to {user.email}."
+                    )
 
         return attrs
 
     def create(self, validated_data):
-        return Task.objects.create(created_by=self.context["request"].user, **validated_data)
+        assigned_users = validated_data.pop("assigned_emails", [])
+        task = Task.objects.create(created_by=self.context["request"].user, **validated_data)
+        if assigned_users:
+            task.assigned_to.set(assigned_users)
+        return task
+
+    def update(self, instance, validated_data):
+        assigned_users = validated_data.pop("assigned_emails", None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        if assigned_users is not None:
+            instance.assigned_to.set(assigned_users)
+        return instance

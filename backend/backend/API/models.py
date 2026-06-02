@@ -334,6 +334,16 @@ class Invitation(models.Model):
                 defaults={"role": self.role, "is_active": True},
             )
         else:
+            OrganizationMembership.objects.update_or_create(
+                organization=self.project.division.organization,
+                user=user,
+                defaults={"role": OrganizationMembership.Role.MEMBER, "is_active": True},
+            )
+            DivisionMembership.objects.update_or_create(
+                division=self.project.division,
+                user=user,
+                defaults={"role": DivisionMembership.Role.MEMBER, "is_active": True},
+            )
             ProjectMembership.objects.update_or_create(
                 project=self.project,
                 user=user,
@@ -490,6 +500,16 @@ class CalendarEvent(models.Model):
     location = models.CharField(max_length=255, blank=True)
     starts_at = models.DateTimeField()
     ends_at = models.DateTimeField(null=True, blank=True)
+    assigned_to = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        related_name="assigned_calendar_events",
+        blank=True,
+    )
+    assigned_divisions = models.ManyToManyField(
+        Division,
+        related_name="assigned_calendar_events",
+        blank=True,
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -630,10 +650,10 @@ class Task(models.Model):
         on_delete=models.PROTECT,
         related_name="created_tasks",
     )
-    assigned_to = models.ForeignKey(
+    assigned_to = models.ManyToManyField(
         settings.AUTH_USER_MODEL,
-        on_delete=models.PROTECT,
         related_name="assigned_tasks",
+        blank=True,
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

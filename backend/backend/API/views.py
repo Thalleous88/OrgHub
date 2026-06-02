@@ -35,6 +35,7 @@ from .permissions import (
 from .serializers import (
     AnnouncementSerializer,
     CalendarEventSerializer,
+    ChangePasswordSerializer,
     DivisionMembershipSerializer,
     DivisionSerializer,
     EmailTokenObtainPairSerializer,
@@ -847,3 +848,14 @@ class ProjectMemberListView(generics.ListAPIView):
             project=project,
             is_active=True,
         ).select_related("user__profile").order_by("user__email")
+
+
+class ChangePasswordView(APIView):
+    def post(self, request):
+        serializer = ChangePasswordSerializer(
+            data=request.data, context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+        request.user.set_password(serializer.validated_data["new_password"])
+        request.user.save()
+        return Response({"detail": "Password changed successfully."})

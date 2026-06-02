@@ -112,8 +112,8 @@ def seed():
         status=Task.Status.DONE,
         due_at=timezone.now() - timedelta(hours=2),
         created_by=div1_user,
-        assigned_to=test_user
     )
+    t1.assigned_to.add(test_user)
     t2 = Task.objects.create(
         project=portal_project,
         title="Integrate Dashboard with Real Backend",
@@ -121,8 +121,8 @@ def seed():
         status=Task.Status.IN_PROGRESS,
         due_at=timezone.now() + timedelta(days=1, hours=4),
         created_by=div1_user,
-        assigned_to=test_user
     )
+    t2.assigned_to.add(test_user)
     t3 = Task.objects.create(
         division=rd,
         title="Prepare Division Quarterly Review",
@@ -130,8 +130,8 @@ def seed():
         status=Task.Status.TODO,
         due_at=timezone.now() + timedelta(days=3, hours=8),
         created_by=test_user,
-        assigned_to=test_user
     )
+    t3.assigned_to.add(test_user)
     t4 = Task.objects.create(
         division=marketing,
         title="Launch Recruitment Campaign",
@@ -139,8 +139,8 @@ def seed():
         status=Task.Status.TODO,
         due_at=timezone.now() + timedelta(days=5),
         created_by=div2_user,
-        assigned_to=div2_user
     )
+    t4.assigned_to.add(div2_user)
 
     # 7. Create Announcements
     Announcement.objects.create(

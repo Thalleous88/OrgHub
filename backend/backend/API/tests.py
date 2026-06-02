@@ -2120,3 +2120,283 @@ class CalendarEventAssigneeTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         event = CalendarEvent.objects.get(title="Project Assigned Event")
         self.assertIn(self.member_user, event.assigned_to.all())
+
+
+class PersonalTaskAPITests(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="personal@example.com",
+            email="personal@example.com",
+            password="Password123",
+        )
+        self.other_user = User.objects.create_user(
+            username="other-personal@example.com",
+            email="other-personal@example.com",
+            password="Password123",
+        )
+
+    def test_authenticated_user_can_create_personal_task(self):
+        self.client.force_authenticate(self.user)
+
+        response = self.client.post(
+            reverse("task_list"),
+            {"title": "Buy groceries", "assigned_emails": [self.user.email]},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        task = Task.objects.get(title="Buy groceries")
+        self.assertIsNone(task.division_id)
+        self.assertIsNone(task.project_id)
+        self.assertEqual(task.created_by, self.user)
+        self.assertIn(self.user, task.assigned_to.all())
+
+    def test_personal_task_visible_to_creator(self):
+        task = Task.objects.create(
+            title="Personal task",
+            created_by=self.user,
+        )
+        task.assigned_to.add(self.user)
+
+        self.client.force_authenticate(self.user)
+        response = self.client.get(reverse("task_detail", kwargs={"pk": task.pk}))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_personal_task_visible_in_list_to_creator(self):
+        task = Task.objects.create(
+            title="Personal task",
+            created_by=self.user,
+        )
+        task.assigned_to.add(self.user)
+
+        self.client.force_authenticate(self.user)
+        response = self.client.get(reverse("task_list"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+
+    def test_personal_task_not_visible_to_other_users(self):
+        task = Task.objects.create(
+            title="Private personal task",
+            created_by=self.user,
+        )
+        task.assigned_to.add(self.user)
+
+        self.client.force_authenticate(self.other_user)
+        response = self.client.get(reverse("task_detail", kwargs={"pk": task.pk}))
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_personal_task_not_in_list_for_other_users(self):
+        task = Task.objects.create(
+            title="Private personal task",
+            created_by=self.user,
+        )
+        task.assigned_to.add(self.user)
+
+        self.client.force_authenticate(self.other_user)
+        response = self.client.get(reverse("task_list"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 0)
+
+    def test_personal_task_visible_to_assignee(self):
+        task = Task.objects.create(
+            title="Assigned personal task",
+            created_by=self.user,
+        )
+        task.assigned_to.add(self.other_user)
+
+        self.client.force_authenticate(self.other_user)
+        response = self.client.get(reverse("task_detail", kwargs={"pk": task.pk}))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_only_creator_can_delete_personal_task(self):
+        task = Task.objects.create(
+            title="Deletable task",
+            created_by=self.user,
+        )
+        task.assigned_to.add(self.other_user)
+
+        self.client.force_authenticate(self.other_user)
+        response = self.client.delete(reverse("task_detail", kwargs={"pk": task.pk}))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        self.client.force_authenticate(self.user)
+        response = self.client.delete(reverse("task_detail", kwargs={"pk": task.pk}))
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_assigned_user_can_update_status_of_personal_task(self):
+        task = Task.objects.create(
+            title="Update status task",
+            created_by=self.user,
+        )
+        task.assigned_to.add(self.other_user)
+
+        self.client.force_authenticate(self.other_user)
+        response = self.client.patch(
+            reverse("task_detail", kwargs={"pk": task.pk}),
+            {"status": "InProgress"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        task.refresh_from_db()
+        self.assertEqual(task.status, Task.Status.IN_PROGRESS)
+
+    def test_assigned_user_cannot_update_title_of_personal_task(self):
+        task = Task.objects.create(
+            title="Original title",
+            created_by=self.user,
+        )
+        task.assigned_to.add(self.other_user)
+
+        self.client.force_authenticate(self.other_user)
+        response = self.client.patch(
+            reverse("task_detail", kwargs={"pk": task.pk}),
+            {"title": "Changed title"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_creator_can_update_title_of_personal_task(self):
+        task = Task.objects.create(
+            title="Original title",
+            created_by=self.user,
+        )
+        task.assigned_to.add(self.user)
+
+        self.client.force_authenticate(self.user)
+        response = self.client.patch(
+            reverse("task_detail", kwargs={"pk": task.pk}),
+            {"title": "Changed title"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        task.refresh_from_db()
+        self.assertEqual(task.title, "Changed title")
+
+    def test_cannot_create_task_with_both_division_and_project(self):
+        org = Organization.objects.create(name="Test Org", created_by=self.user)
+        division = Division.objects.create(organization=org, name="Div")
+        project = Project.objects.create(division=division, name="Proj")
+
+        self.client.force_authenticate(self.user)
+        response = self.client.post(
+            reverse("task_list"),
+            {
+                "title": "Invalid task",
+                "division": division.pk,
+                "project": project.pk,
+                "assigned_emails": [self.user.email],
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_scope_organization_returns_none_for_personal_task(self):
+        task = Task.objects.create(
+            title="No scope",
+            created_by=self.user,
+        )
+        task.assigned_to.add(self.user)
+        self.assertIsNone(task.scope_organization)
+
+    def test_scope_division_returns_none_for_personal_task(self):
+        task = Task.objects.create(
+            title="No scope",
+            created_by=self.user,
+        )
+        task.assigned_to.add(self.user)
+        self.assertIsNone(task.scope_division)
+
+
+class ChangePasswordAPITests(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="changepw@example.com",
+            email="changepw@example.com",
+            password="OldPassword123",
+        )
+
+    def test_change_password_success(self):
+        self.client.force_authenticate(self.user)
+
+        response = self.client.post(
+            reverse("change_password"),
+            {
+                "old_password": "OldPassword123",
+                "new_password": "NewPassword456",
+                "confirm_password": "NewPassword456",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password("NewPassword456"))
+
+    def test_change_password_wrong_old_password(self):
+        self.client.force_authenticate(self.user)
+
+        response = self.client.post(
+            reverse("change_password"),
+            {
+                "old_password": "WrongPassword",
+                "new_password": "NewPassword456",
+                "confirm_password": "NewPassword456",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password("OldPassword123"))
+
+    def test_change_password_mismatch_confirmation(self):
+        self.client.force_authenticate(self.user)
+
+        response = self.client.post(
+            reverse("change_password"),
+            {
+                "old_password": "OldPassword123",
+                "new_password": "NewPassword456",
+                "confirm_password": "DifferentPassword",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password("OldPassword123"))
+
+    def test_change_password_too_short(self):
+        self.client.force_authenticate(self.user)
+
+        response = self.client.post(
+            reverse("change_password"),
+            {
+                "old_password": "OldPassword123",
+                "new_password": "Short1",
+                "confirm_password": "Short1",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password("OldPassword123"))
+
+    def test_change_password_requires_authentication(self):
+        response = self.client.post(
+            reverse("change_password"),
+            {
+                "old_password": "OldPassword123",
+                "new_password": "NewPassword456",
+                "confirm_password": "NewPassword456",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)

@@ -15,6 +15,7 @@ import TaskDetailDrawer from '../../components/tasks/TaskDetailDrawer';
 import CreateTaskModal from '../../components/tasks/CreateTaskModal';
 import { useTasks } from '../../hooks/queries/useTasks';
 import { useDashboard } from '../../hooks/queries/useDashboard';
+import { useDivisions, useProjects } from '../../hooks/queries/useWorkspace';
 import { useAuth } from '../../context/AuthContext';
 import type { Task } from '../../types/api';
 
@@ -25,6 +26,8 @@ export default function TasksPage() {
   const { user } = useAuth();
   const { data: tasks, isLoading } = useTasks();
   const { data: dashboard } = useDashboard();
+  const { data: divisions } = useDivisions();
+  const { data: projects } = useProjects();
   const [view, setView] = useState<ViewKey>('mine');
   const [scopeFilter, setScopeFilter] = useState<string>('all');
   const [selected, setSelected] = useState<Task | null>(null);
@@ -82,11 +85,9 @@ export default function TasksPage() {
         title="Tasks"
         subtitle="Drag tasks across columns to update their status."
         actions={
-          defaultCreateScope ? (
-            <Button variant="primary" onClick={() => setCreateOpen(true)}>
-              New task
-            </Button>
-          ) : undefined
+          <Button variant="primary" onClick={() => setCreateOpen(true)}>
+            New task
+          </Button>
         }
       />
 
@@ -143,6 +144,8 @@ export default function TasksPage() {
         open={createOpen}
         onClose={() => setCreateOpen(false)}
         defaultScope={defaultCreateScope}
+        divisions={(divisions ?? []).map((d) => ({ id: d.id, name: d.name }))}
+        projects={(projects ?? []).map((p) => ({ id: p.id, name: p.name }))}
       />
       <TaskDetailDrawer
         open={Boolean(selected)}

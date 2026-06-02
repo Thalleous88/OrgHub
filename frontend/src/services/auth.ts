@@ -55,3 +55,10 @@ export async function updateProfile(values: Partial<Profile>): Promise<Profile> 
     body: values,
   });
 }
+
+export async function changePassword(oldPassword: string, newPassword: string): Promise<void> {
+  await request('/auth/change-password/', {
+    method: 'POST',
+    body: { old_password: oldPassword, new_password: newPassword, confirm_password: newPassword },
+  });
+}

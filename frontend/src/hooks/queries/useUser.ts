@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { getCurrentUser, getProfile, updateProfile } from '../../services/auth';
+import { getCurrentUser, getProfile, updateProfile, changePassword } from '../../services/auth';
 import { queryKeys } from '../../lib/queryClient';
 import type { Profile } from '../../types/api';
 
@@ -27,5 +27,12 @@ export function useUpdateProfile() {
       qc.invalidateQueries({ queryKey: queryKeys.currentUser });
       qc.invalidateQueries({ queryKey: queryKeys.dashboard });
     },
+  });
+}
+
+export function useChangePassword() {
+  return useMutation({
+    mutationFn: ({ oldPassword, newPassword }: { oldPassword: string; newPassword: string }) =>
+      changePassword(oldPassword, newPassword),
   });
 }

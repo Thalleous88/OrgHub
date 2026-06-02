@@ -94,7 +94,7 @@ export default function TaskDetailDrawer({ open, task, currentUserId, onClose }:
         <header className="task-drawer__head">
           <div>
             <span className="task-drawer__eyebrow">
-              {task.project ? 'Project task' : 'Division task'}
+              {task.project ? 'Project task' : task.division ? 'Division task' : 'Personal task'}
             </span>
             <h2 className="task-drawer__title">{task.title}</h2>
             <div className="task-drawer__chips">

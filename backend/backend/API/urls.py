@@ -5,6 +5,7 @@ from .views import (
     AnnouncementFeedView,
     CalendarEventDetailView,
     CalendarEventListView,
+    ChangePasswordView,
     CurrentUserProfileView,
     CurrentUserView,
     DashboardView,
@@ -42,6 +43,7 @@ urlpatterns = [
     path("auth/login/", LoginView.as_view(), name="login"),
     path("auth/me/", CurrentUserView.as_view(), name="current_user"),
     path("auth/profile/", CurrentUserProfileView.as_view(), name="current_user_profile"),
+    path("auth/change-password/", ChangePasswordView.as_view(), name="change_password"),
     path("dashboard/", DashboardView.as_view(), name="dashboard"),
     path("calendar/events/", CalendarEventListView.as_view(), name="calendar_event_list"),
     path(

@@ -233,7 +233,7 @@ class MembershipAPITests(APITestCase):
         self.client.force_authenticate(self.member_user)
         accept_response = self.client.post(
             reverse("invitation_accept"),
-            {"token": invite_response.data["token"]},
+            {"token": invite_response.data[0]["token"]},
             format="json",
         )
 
@@ -281,7 +281,7 @@ class MembershipAPITests(APITestCase):
                 role=ProjectMembership.Role.MEMBER,
             )
 
-    def test_project_invite_requires_existing_division_member(self):
+    def test_project_invite_allows_any_org_member(self):
         organization = Organization.objects.create(
             name="OrgHub",
             created_by=self.core_user,
@@ -306,20 +306,132 @@ class MembershipAPITests(APITestCase):
             format="json",
         )
 
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
-        DivisionMembership.objects.create(
-            division=division,
-            user=self.member_user,
-            role=DivisionMembership.Role.MEMBER,
+    def test_project_invite_rejects_non_org_member(self):
+        organization = Organization.objects.create(
+            name="OrgHub",
+            created_by=self.core_user,
         )
+        OrganizationMembership.objects.create(
+            organization=organization,
+            user=self.core_user,
+            role=OrganizationMembership.Role.CORE_BOARD,
+        )
+        division = Division.objects.create(organization=organization, name="Events")
+        project = Project.objects.create(division=division, name="Welcome Night")
+
+        self.client.force_authenticate(self.core_user)
         response = self.client.post(
             reverse("project_invite", kwargs={"pk": project.pk}),
-            {"email": self.member_user.email, "role": "PROJECT_LEAD"},
+            {"email": self.member_user.email, "role": "MEMBER"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_project_lead_can_invite_org_member_to_project(self):
+        organization = Organization.objects.create(
+            name="OrgHub",
+            created_by=self.core_user,
+        )
+        OrganizationMembership.objects.create(
+            organization=organization,
+            user=self.core_user,
+            role=OrganizationMembership.Role.CORE_BOARD,
+        )
+        OrganizationMembership.objects.create(
+            organization=organization,
+            user=self.member_user,
+            role=OrganizationMembership.Role.MEMBER,
+        )
+        lead_user = User.objects.create_user(
+            username="lead-project@example.com",
+            email="lead-project@example.com",
+            password="Password123",
+        )
+        OrganizationMembership.objects.create(
+            organization=organization,
+            user=lead_user,
+            role=OrganizationMembership.Role.MEMBER,
+        )
+        division = Division.objects.create(organization=organization, name="Events")
+        DivisionMembership.objects.create(
+            division=division,
+            user=lead_user,
+            role=DivisionMembership.Role.MEMBER,
+        )
+        project = Project.objects.create(division=division, name="Welcome Night")
+        ProjectMembership.objects.create(
+            project=project,
+            user=lead_user,
+            role=ProjectMembership.Role.PROJECT_LEAD,
+        )
+
+        self.client.force_authenticate(lead_user)
+        response = self.client.post(
+            reverse("project_invite", kwargs={"pk": project.pk}),
+            {"email": self.member_user.email, "role": "MEMBER"},
             format="json",
         )
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_accepting_project_invite_creates_org_division_and_project_memberships(self):
+        organization = Organization.objects.create(
+            name="OrgHub",
+            created_by=self.core_user,
+        )
+        OrganizationMembership.objects.create(
+            organization=organization,
+            user=self.core_user,
+            role=OrganizationMembership.Role.CORE_BOARD,
+        )
+        OrganizationMembership.objects.create(
+            organization=organization,
+            user=self.member_user,
+            role=OrganizationMembership.Role.MEMBER,
+        )
+        division = Division.objects.create(organization=organization, name="Events")
+        project = Project.objects.create(division=division, name="Welcome Night")
+
+        self.client.force_authenticate(self.core_user)
+        invite_response = self.client.post(
+            reverse("project_invite", kwargs={"pk": project.pk}),
+            {"email": self.member_user.email, "role": "MEMBER"},
+            format="json",
+        )
+        self.assertEqual(invite_response.status_code, status.HTTP_201_CREATED)
+
+        self.client.force_authenticate(self.member_user)
+        accept_response = self.client.post(
+            reverse("invitation_accept"),
+            {"token": invite_response.data[0]["token"]},
+            format="json",
+        )
+
+        self.assertEqual(accept_response.status_code, status.HTTP_200_OK)
+        self.assertTrue(
+            OrganizationMembership.objects.filter(
+                organization=organization,
+                user=self.member_user,
+                is_active=True,
+            ).exists()
+        )
+        self.assertTrue(
+            DivisionMembership.objects.filter(
+                division=division,
+                user=self.member_user,
+                is_active=True,
+            ).exists()
+        )
+        self.assertTrue(
+            ProjectMembership.objects.filter(
+                project=project,
+                user=self.member_user,
+                is_active=True,
+            ).exists()
+        )
 
 
 @override_settings(MEDIA_ROOT=TEST_MEDIA_ROOT)
@@ -915,8 +1027,8 @@ class NotificationAPITests(APITestCase):
             title="Submit report",
             due_at=timezone.now() + timedelta(hours=2),
             created_by=self.core_user,
-            assigned_to=self.member_user,
         )
+        task.assigned_to.add(self.member_user)
         event = CalendarEvent.objects.create(
             organization=self.organization,
             created_by=self.core_user,
@@ -955,8 +1067,8 @@ class NotificationAPITests(APITestCase):
             status=Task.Status.DONE,
             due_at=timezone.now() + timedelta(hours=2),
             created_by=self.core_user,
-            assigned_to=self.member_user,
         )
+        Task.objects.get(title="Completed report").assigned_to.add(self.member_user)
         CalendarEvent.objects.create(
             organization=self.organization,
             created_by=self.core_user,
@@ -969,16 +1081,17 @@ class NotificationAPITests(APITestCase):
         self.assertFalse(Notification.objects.exists())
 
     def test_user_can_list_and_mark_own_notifications_read(self):
+        task = Task.objects.create(
+            project=self.project,
+            title="Read notification task",
+            due_at=timezone.now() + timedelta(hours=2),
+            created_by=self.core_user,
+        )
+        task.assigned_to.add(self.member_user)
         notification = Notification.objects.create(
             recipient=self.member_user,
             notification_type=Notification.NotificationType.TASK_REMINDER,
-            task=Task.objects.create(
-                project=self.project,
-                title="Read notification task",
-                due_at=timezone.now() + timedelta(hours=2),
-                created_by=self.core_user,
-                assigned_to=self.member_user,
-            ),
+            task=task,
             title="Task due soon",
             message="Read this notification.",
         )
@@ -1131,14 +1244,14 @@ class DashboardAPITests(APITestCase):
             project=self.project,
             title="Prepare onboarding notes",
             created_by=self.project_lead_user,
-            assigned_to=self.member_user,
         )
+        assigned_task.assigned_to.add(self.member_user)
         created_task = Task.objects.create(
             project=self.project,
             title="Review onboarding notes",
             created_by=self.member_user,
-            assigned_to=self.member_user,
         )
+        created_task.assigned_to.add(self.member_user)
         announcement = Announcement.objects.create(
             organization=self.organization,
             created_by=self.core_user,
@@ -1184,25 +1297,25 @@ class DashboardAPITests(APITestCase):
         self.assertEqual(response.data["management_summary"]["projects"], [])
 
     def test_dashboard_returns_role_based_management_summary(self):
-        Task.objects.create(
+        div_task = Task.objects.create(
             division=self.division,
             title="Division plan",
             created_by=self.core_user,
-            assigned_to=self.division_head_user,
         )
-        Task.objects.create(
+        div_task.assigned_to.add(self.division_head_user)
+        proj_task = Task.objects.create(
             project=self.project,
             title="Project roadmap",
             created_by=self.division_head_user,
-            assigned_to=self.project_lead_user,
         )
-        Task.objects.create(
+        proj_task.assigned_to.add(self.project_lead_user)
+        done_task = Task.objects.create(
             project=self.project,
             title="Completed work",
             status=Task.Status.DONE,
             created_by=self.project_lead_user,
-            assigned_to=self.member_user,
         )
+        done_task.assigned_to.add(self.member_user)
 
         self.client.force_authenticate(self.core_user)
         core_response = self.client.get(reverse("dashboard"))
@@ -1349,7 +1462,7 @@ class TaskAPITests(APITestCase):
             {
                 "division": self.division.pk,
                 "title": "Prepare division plan",
-                "assigned_to": self.division_head_user.pk,
+                "assigned_emails": [self.division_head_user.email],
             },
             format="json",
         )
@@ -1357,9 +1470,9 @@ class TaskAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         task = Task.objects.get(title="Prepare division plan")
         self.assertEqual(task.status, Task.Status.TODO)
-        self.assertEqual(task.assigned_to, self.division_head_user)
+        self.assertIn(self.division_head_user, task.assigned_to.all())
 
-    def test_core_board_cannot_assign_directly_to_project_member(self):
+    def test_core_board_can_assign_directly_to_project_member(self):
         self.client.force_authenticate(self.core_user)
 
         response = self.client.post(
@@ -1367,12 +1480,12 @@ class TaskAPITests(APITestCase):
             {
                 "project": self.project.pk,
                 "title": "Skip hierarchy",
-                "assigned_to": self.member_user.pk,
+                "assigned_emails": [self.member_user.email],
             },
             format="json",
         )
 
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     def test_division_head_can_assign_task_to_project_lead(self):
         self.client.force_authenticate(self.division_head_user)
@@ -1382,7 +1495,7 @@ class TaskAPITests(APITestCase):
             {
                 "project": self.project.pk,
                 "title": "Build project roadmap",
-                "assigned_to": self.project_lead_user.pk,
+                "assigned_emails": [self.project_lead_user.email],
             },
             format="json",
         )
@@ -1397,7 +1510,7 @@ class TaskAPITests(APITestCase):
             {
                 "project": self.project.pk,
                 "title": "Draft workshop material",
-                "assigned_to": self.member_user.pk,
+                "assigned_emails": [self.member_user.email],
             },
             format="json",
         )
@@ -1409,8 +1522,8 @@ class TaskAPITests(APITestCase):
             project=self.project,
             title="Finish slides",
             created_by=self.project_lead_user,
-            assigned_to=self.member_user,
         )
+        task.assigned_to.add(self.member_user)
         self.client.force_authenticate(self.member_user)
 
         response = self.client.patch(
@@ -1434,10 +1547,576 @@ class TaskAPITests(APITestCase):
             project=self.project,
             title="Private assignment",
             created_by=self.project_lead_user,
-            assigned_to=self.member_user,
         )
+        task.assigned_to.add(self.member_user)
 
         self.client.force_authenticate(self.other_member_user)
         response = self.client.get(reverse("task_detail", kwargs={"pk": task.pk}))
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class RegisterAutoAcceptTests(APITestCase):
+    def setUp(self):
+        self.core_user = User.objects.create_user(
+            username="core-regauto@example.com",
+            email="core-regauto@example.com",
+            password="Password123",
+        )
+        self.organization = Organization.objects.create(
+            name="RegAuto Org",
+            created_by=self.core_user,
+        )
+        OrganizationMembership.objects.create(
+            organization=self.organization,
+            user=self.core_user,
+            role=OrganizationMembership.Role.CORE_BOARD,
+        )
+        self.division = Division.objects.create(
+            organization=self.organization,
+            name="RegAuto Division",
+        )
+
+    def test_register_auto_accepts_pending_org_invitation(self):
+        Invitation.objects.create(
+            organization=self.organization,
+            invited_by=self.core_user,
+            email="newmember@example.com",
+            role=Invitation.Role.MEMBER,
+        )
+
+        response = self.client.post(
+            reverse("register"),
+            {"email": "newmember@example.com", "password": "Password123"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(
+            OrganizationMembership.objects.filter(
+                organization=self.organization,
+                user__email="newmember@example.com",
+                role=OrganizationMembership.Role.MEMBER,
+                is_active=True,
+            ).exists()
+        )
+
+    def test_register_auto_accepts_pending_division_invitation(self):
+        Invitation.objects.create(
+            division=self.division,
+            invited_by=self.core_user,
+            email="divnew@example.com",
+            role=Invitation.Role.MEMBER,
+        )
+
+        response = self.client.post(
+            reverse("register"),
+            {"email": "divnew@example.com", "password": "Password123"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(
+            OrganizationMembership.objects.filter(
+                organization=self.organization,
+                user__email="divnew@example.com",
+                is_active=True,
+            ).exists()
+        )
+        self.assertTrue(
+            DivisionMembership.objects.filter(
+                division=self.division,
+                user__email="divnew@example.com",
+                role=DivisionMembership.Role.MEMBER,
+                is_active=True,
+            ).exists()
+        )
+
+    def test_register_without_pending_invitations_still_succeeds(self):
+        response = self.client.post(
+            reverse("register"),
+            {"email": "free@example.com", "password": "Password123"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertFalse(OrganizationMembership.objects.filter(user__email="free@example.com").exists())
+
+
+class MemberListAPITests(APITestCase):
+    def setUp(self):
+        self.core_user = User.objects.create_user(
+            username="core-members@example.com",
+            email="core-members@example.com",
+            password="Password123",
+        )
+        Profile.objects.create(user=self.core_user, full_name="Core Board")
+        self.member_user = User.objects.create_user(
+            username="member-members@example.com",
+            email="member-members@example.com",
+            password="Password123",
+        )
+        Profile.objects.create(user=self.member_user, full_name="Org Member")
+        self.outsider_user = User.objects.create_user(
+            username="outsider-members@example.com",
+            email="outsider-members@example.com",
+            password="Password123",
+        )
+        self.organization = Organization.objects.create(
+            name="Members Org",
+            created_by=self.core_user,
+        )
+        self.division = Division.objects.create(
+            organization=self.organization,
+            name="Members Division",
+        )
+        self.project = Project.objects.create(
+            division=self.division,
+            name="Members Project",
+        )
+        OrganizationMembership.objects.create(
+            organization=self.organization,
+            user=self.core_user,
+            role=OrganizationMembership.Role.CORE_BOARD,
+        )
+        OrganizationMembership.objects.create(
+            organization=self.organization,
+            user=self.member_user,
+            role=OrganizationMembership.Role.MEMBER,
+        )
+        DivisionMembership.objects.create(
+            division=self.division,
+            user=self.member_user,
+            role=DivisionMembership.Role.MEMBER,
+        )
+        ProjectMembership.objects.create(
+            project=self.project,
+            user=self.member_user,
+            role=ProjectMembership.Role.MEMBER,
+        )
+
+    def test_org_member_can_list_org_members(self):
+        self.client.force_authenticate(self.member_user)
+
+        response = self.client.get(
+            reverse("organization_members", kwargs={"pk": self.organization.pk})
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        emails = [m["email"] for m in response.data]
+        self.assertIn(self.core_user.email, emails)
+        self.assertIn(self.member_user.email, emails)
+
+    def test_org_member_list_includes_role_and_full_name(self):
+        self.client.force_authenticate(self.member_user)
+
+        response = self.client.get(
+            reverse("organization_members", kwargs={"pk": self.organization.pk})
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        core_entry = next(m for m in response.data if m["email"] == self.core_user.email)
+        self.assertEqual(core_entry["role"], OrganizationMembership.Role.CORE_BOARD)
+        self.assertEqual(core_entry["full_name"], "Core Board")
+
+    def test_division_member_can_list_division_members(self):
+        self.client.force_authenticate(self.member_user)
+
+        response = self.client.get(
+            reverse("division_members", kwargs={"pk": self.division.pk})
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        emails = [m["email"] for m in response.data]
+        self.assertIn(self.member_user.email, emails)
+
+    def test_project_member_can_list_project_members(self):
+        self.client.force_authenticate(self.member_user)
+
+        response = self.client.get(
+            reverse("project_members", kwargs={"pk": self.project.pk})
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        emails = [m["email"] for m in response.data]
+        self.assertIn(self.member_user.email, emails)
+
+    def test_outsider_cannot_list_org_members(self):
+        self.client.force_authenticate(self.outsider_user)
+
+        response = self.client.get(
+            reverse("organization_members", kwargs={"pk": self.organization.pk})
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class TaskPermissionUpdateTests(APITestCase):
+    def setUp(self):
+        self.core_user = User.objects.create_user(
+            username="core-perm@example.com",
+            email="core-perm@example.com",
+            password="Password123",
+        )
+        self.division_head_user = User.objects.create_user(
+            username="head-perm@example.com",
+            email="head-perm@example.com",
+            password="Password123",
+        )
+        self.project_lead_user = User.objects.create_user(
+            username="lead-perm@example.com",
+            email="lead-perm@example.com",
+            password="Password123",
+        )
+        self.member_user = User.objects.create_user(
+            username="member-perm@example.com",
+            email="member-perm@example.com",
+            password="Password123",
+        )
+        self.other_div_member = User.objects.create_user(
+            username="other-div-perm@example.com",
+            email="other-div-perm@example.com",
+            password="Password123",
+        )
+        self.organization = Organization.objects.create(
+            name="Perm Org",
+            created_by=self.core_user,
+        )
+        self.other_organization = Organization.objects.create(
+            name="Other Perm Org",
+            created_by=self.core_user,
+        )
+        self.division = Division.objects.create(
+            organization=self.organization,
+            name="Perm Division",
+        )
+        self.other_division = Division.objects.create(
+            organization=self.organization,
+            name="Other Perm Division",
+        )
+        self.project = Project.objects.create(
+            division=self.division,
+            name="Perm Project",
+        )
+        for user in [
+            self.core_user,
+            self.division_head_user,
+            self.project_lead_user,
+            self.member_user,
+            self.other_div_member,
+        ]:
+            OrganizationMembership.objects.create(
+                organization=self.organization,
+                user=user,
+                role=(
+                    OrganizationMembership.Role.CORE_BOARD
+                    if user == self.core_user
+                    else OrganizationMembership.Role.MEMBER
+                ),
+            )
+        DivisionMembership.objects.create(
+            division=self.division,
+            user=self.division_head_user,
+            role=DivisionMembership.Role.DIVISION_HEAD,
+        )
+        for user in [self.project_lead_user, self.member_user]:
+            DivisionMembership.objects.create(
+                division=self.division,
+                user=user,
+                role=DivisionMembership.Role.MEMBER,
+            )
+        DivisionMembership.objects.create(
+            division=self.other_division,
+            user=self.other_div_member,
+            role=DivisionMembership.Role.MEMBER,
+        )
+        ProjectMembership.objects.create(
+            project=self.project,
+            user=self.project_lead_user,
+            role=ProjectMembership.Role.PROJECT_LEAD,
+        )
+        ProjectMembership.objects.create(
+            project=self.project,
+            user=self.member_user,
+            role=ProjectMembership.Role.MEMBER,
+        )
+
+    def test_core_board_can_assign_task_to_any_division_member(self):
+        self.client.force_authenticate(self.core_user)
+
+        response = self.client.post(
+            reverse("task_list"),
+            {
+                "division": self.other_division.pk,
+                "title": "Cross-division task",
+                "assigned_emails": [self.other_div_member.email],
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_core_board_can_update_any_task(self):
+        task = Task.objects.create(
+            division=self.division,
+            title="Core update target",
+            created_by=self.division_head_user,
+        )
+        task.assigned_to.add(self.member_user)
+
+        self.client.force_authenticate(self.core_user)
+        response = self.client.patch(
+            reverse("task_detail", kwargs={"pk": task.pk}),
+            {"title": "Core renamed"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        task.refresh_from_db()
+        self.assertEqual(task.title, "Core renamed")
+
+    def test_core_board_can_delete_any_task(self):
+        task = Task.objects.create(
+            project=self.project,
+            title="Core delete target",
+            created_by=self.project_lead_user,
+        )
+        task.assigned_to.add(self.member_user)
+
+        self.client.force_authenticate(self.core_user)
+        response = self.client.delete(reverse("task_detail", kwargs={"pk": task.pk}))
+
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_member_can_self_assign_division_task(self):
+        self.client.force_authenticate(self.member_user)
+
+        response = self.client.post(
+            reverse("task_list"),
+            {
+                "division": self.division.pk,
+                "title": "Self-assigned div task",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        task = Task.objects.get(title="Self-assigned div task")
+        self.assertIn(self.member_user, task.assigned_to.all())
+
+    def test_member_can_self_assign_project_task(self):
+        self.client.force_authenticate(self.member_user)
+
+        response = self.client.post(
+            reverse("task_list"),
+            {
+                "project": self.project.pk,
+                "title": "Self-assigned proj task",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        task = Task.objects.get(title="Self-assigned proj task")
+        self.assertIn(self.member_user, task.assigned_to.all())
+
+    def test_non_member_cannot_create_task_in_scope(self):
+        self.client.force_authenticate(self.other_div_member)
+
+        response = self.client.post(
+            reverse("task_list"),
+            {
+                "project": self.project.pk,
+                "title": "Unauthorized task",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class CalendarEventAssigneeTests(APITestCase):
+    def setUp(self):
+        self.core_user = User.objects.create_user(
+            username="core-assignee@example.com",
+            email="core-assignee@example.com",
+            password="Password123",
+        )
+        self.member_user = User.objects.create_user(
+            username="member-assignee@example.com",
+            email="member-assignee@example.com",
+            password="Password123",
+        )
+        self.organization = Organization.objects.create(
+            name="Assignee Org",
+            created_by=self.core_user,
+        )
+        self.division = Division.objects.create(
+            organization=self.organization,
+            name="Assignee Division",
+        )
+        self.other_division = Division.objects.create(
+            organization=self.organization,
+            name="Other Assignee Division",
+        )
+        self.project = Project.objects.create(
+            division=self.division,
+            name="Assignee Project",
+        )
+        OrganizationMembership.objects.create(
+            organization=self.organization,
+            user=self.core_user,
+            role=OrganizationMembership.Role.CORE_BOARD,
+        )
+        OrganizationMembership.objects.create(
+            organization=self.organization,
+            user=self.member_user,
+            role=OrganizationMembership.Role.MEMBER,
+        )
+        DivisionMembership.objects.create(
+            division=self.division,
+            user=self.member_user,
+            role=DivisionMembership.Role.MEMBER,
+        )
+        ProjectMembership.objects.create(
+            project=self.project,
+            user=self.member_user,
+            role=ProjectMembership.Role.MEMBER,
+        )
+
+    def event_payload(self, **overrides):
+        starts_at = timezone.now() + timedelta(days=1)
+        payload = {
+            "title": "Assigned Event",
+            "description": "Testing assignees.",
+            "event_type": CalendarEvent.EventType.MEETING,
+            "location": "Room 501",
+            "starts_at": starts_at.isoformat(),
+            "ends_at": (starts_at + timedelta(hours=1)).isoformat(),
+        }
+        payload.update(overrides)
+        return payload
+
+    def test_org_event_with_assigned_emails(self):
+        self.client.force_authenticate(self.core_user)
+
+        response = self.client.post(
+            reverse("organization_calendar_events", kwargs={"pk": self.organization.pk}),
+            self.event_payload(
+                title="Org Assigned Event",
+                assigned_emails=[self.member_user.email],
+            ),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        event = CalendarEvent.objects.get(title="Org Assigned Event")
+        self.assertIn(self.member_user, event.assigned_to.all())
+        self.assertIn(self.member_user.email, response.data["assigned_to_emails"])
+
+    def test_org_event_with_assigned_divisions(self):
+        self.client.force_authenticate(self.core_user)
+
+        response = self.client.post(
+            reverse("organization_calendar_events", kwargs={"pk": self.organization.pk}),
+            self.event_payload(
+                title="Division Assigned Event",
+                assigned_divisions=[self.division.pk, self.other_division.pk],
+            ),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        event = CalendarEvent.objects.get(title="Division Assigned Event")
+        self.assertIn(self.division, event.assigned_divisions.all())
+        self.assertIn(self.other_division, event.assigned_divisions.all())
+        self.assertIn(self.division.pk, response.data["assigned_division_ids"])
+
+    def test_assigned_divisions_only_on_org_scoped_events(self):
+        self.client.force_authenticate(self.core_user)
+        div_head_user = User.objects.create_user(
+            username="head-assignee@example.com",
+            email="head-assignee@example.com",
+            password="Password123",
+        )
+        OrganizationMembership.objects.create(
+            organization=self.organization,
+            user=div_head_user,
+            role=OrganizationMembership.Role.MEMBER,
+        )
+        DivisionMembership.objects.create(
+            division=self.division,
+            user=div_head_user,
+            role=DivisionMembership.Role.DIVISION_HEAD,
+        )
+        self.client.force_authenticate(div_head_user)
+
+        response = self.client.post(
+            reverse("division_calendar_events", kwargs={"pk": self.division.pk}),
+            self.event_payload(
+                title="Bad Division Event",
+                assigned_divisions=[self.division.pk],
+            ),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_assigned_divisions_must_belong_to_organization(self):
+        other_org = Organization.objects.create(
+            name="Other Assignee Org",
+            created_by=self.core_user,
+        )
+        foreign_division = Division.objects.create(
+            organization=other_org,
+            name="Foreign Division",
+        )
+
+        self.client.force_authenticate(self.core_user)
+
+        response = self.client.post(
+            reverse("organization_calendar_events", kwargs={"pk": self.organization.pk}),
+            self.event_payload(
+                title="Foreign Div Event",
+                assigned_divisions=[foreign_division.pk],
+            ),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_project_event_supports_assigned_emails(self):
+        proj_lead = User.objects.create_user(
+            username="lead-assignee@example.com",
+            email="lead-assignee@example.com",
+            password="Password123",
+        )
+        OrganizationMembership.objects.create(
+            organization=self.organization,
+            user=proj_lead,
+            role=OrganizationMembership.Role.MEMBER,
+        )
+        DivisionMembership.objects.create(
+            division=self.division,
+            user=proj_lead,
+            role=DivisionMembership.Role.MEMBER,
+        )
+        ProjectMembership.objects.create(
+            project=self.project,
+            user=proj_lead,
+            role=ProjectMembership.Role.PROJECT_LEAD,
+        )
+        self.client.force_authenticate(proj_lead)
+
+        response = self.client.post(
+            reverse("project_calendar_events", kwargs={"pk": self.project.pk}),
+            self.event_payload(
+                title="Project Assigned Event",
+                assigned_emails=[self.member_user.email],
+            ),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        event = CalendarEvent.objects.get(title="Project Assigned Event")
+        self.assertIn(self.member_user, event.assigned_to.all())

@@ -25,17 +25,18 @@ def generate_due_reminders(now=None, window=None):
     for task in Task.objects.filter(
         due_at__gte=now,
         due_at__lte=until,
-    ).exclude(status=Task.Status.DONE).select_related("assigned_to"):
-        _, created = Notification.objects.get_or_create(
-            recipient=task.assigned_to,
-            task=task,
-            notification_type=Notification.NotificationType.TASK_REMINDER,
-            defaults={
-                "title": f"Task due soon: {task.title}",
-                "message": f"{task.title} is due at {task.due_at.isoformat()}.",
-            },
-        )
-        created_count += int(created)
+    ).exclude(status=Task.Status.DONE).prefetch_related("assigned_to"):
+        for assignee in task.assigned_to.all():
+            _, created = Notification.objects.get_or_create(
+                recipient=assignee,
+                task=task,
+                notification_type=Notification.NotificationType.TASK_REMINDER,
+                defaults={
+                    "title": f"Task due soon: {task.title}",
+                    "message": f"{task.title} is due at {task.due_at.isoformat()}.",
+                },
+            )
+            created_count += int(created)
 
     for event in CalendarEvent.objects.filter(
         starts_at__gte=now,

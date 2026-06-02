@@ -12,6 +12,7 @@ from .views import (
     DivisionDocumentListCreateView,
     DivisionInvitationCreateView,
     DivisionListCreateView,
+    DivisionMemberListView,
     InvitationAcceptView,
     LoginView,
     NotificationDetailView,
@@ -22,10 +23,12 @@ from .views import (
     OrganizationDocumentListCreateView,
     OrganizationInvitationCreateView,
     OrganizationListCreateView,
-    ProjectDocumentListCreateView,
+    OrganizationMemberListView,
     ProjectCalendarEventListCreateView,
+    ProjectDocumentListCreateView,
     ProjectInvitationCreateView,
     ProjectListCreateView,
+    ProjectMemberListView,
     RegisterView,
     ResourceDocumentDetailView,
     ResourceDocumentDownloadView,
@@ -48,6 +51,11 @@ urlpatterns = [
     ),
     path("organizations/", OrganizationListCreateView.as_view(), name="organization_list"),
     path(
+        "organizations/<int:pk>/members/",
+        OrganizationMemberListView.as_view(),
+        name="organization_members",
+    ),
+    path(
         "organizations/<int:pk>/invite/",
         OrganizationInvitationCreateView.as_view(),
         name="organization_invite",
@@ -69,6 +77,11 @@ urlpatterns = [
     ),
     path("divisions/", DivisionListCreateView.as_view(), name="division_list"),
     path(
+        "divisions/<int:pk>/members/",
+        DivisionMemberListView.as_view(),
+        name="division_members",
+    ),
+    path(
         "divisions/<int:pk>/invite/",
         DivisionInvitationCreateView.as_view(),
         name="division_invite",
@@ -84,6 +97,11 @@ urlpatterns = [
         name="division_calendar_events",
     ),
     path("projects/", ProjectListCreateView.as_view(), name="project_list"),
+    path(
+        "projects/<int:pk>/members/",
+        ProjectMemberListView.as_view(),
+        name="project_members",
+    ),
     path(
         "projects/<int:pk>/invite/",
         ProjectInvitationCreateView.as_view(),

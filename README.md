@@ -27,14 +27,38 @@ A comprehensive organization productivity application designed to streamline tea
 
 ## Features
 
+### Authentication & Onboarding
 - Email/password authentication with JWT tokens
-- Scoped role-based access control for organizations, divisions, and projects
-- Invitation-only membership management
-- Organization, division, and project workspace hierarchy
-- Task assignment and status tracking
+- Auto-accept pending invitations on registration — users who register with an email that has a pending invite are automatically added to the organization, division, or project
+
+### Role-Based Access Control
+- Scoped role hierarchy: Core Board → Division Head → Project Lead → Member
+- Core Board members have admin privileges across all scopes (create, update, delete tasks in any division or project)
+- Regular members can self-assign tasks within their scope
+- Invitation-only membership management with member picker and email invite
+
+### Workspace Hierarchy
+- Organization → Division → Project three-level hierarchy
+- Member lists for organizations, divisions, and projects (visible to any member of the parent scope)
+- Invite members via parent-scope member picker or by email address
+
+### Task Management
+- Task assignment to individuals via member picker
+- Auto self-assignment: creating a task with no assignees automatically assigns the creator
+- Core Board can create, update, and delete tasks in any scope
+- Division Heads and Project Leads can assign tasks to members within their scope
+- Status tracking (To Do, In Progress, Done) — assigned users can update status only
+
+### Calendar & Events
+- Scoped calendar events (organization, division, project level)
+- Individual assignees on events at any scope
+- Division-level assignees on organization-scoped events
+- Event type classification (Event, Meeting, Milestone)
+- Time-range filtering on calendar feed
+
+### Additional Features
 - Scoped document repositories with role-based permissions
 - Organization announcements and broadcast feed
-- Calendar events, meetings, and milestones
 - Dashboard aggregation for personal and management views
 - In-app notifications and reminder generation
 - RESTful API architecture
@@ -141,11 +165,12 @@ Implemented backend API areas include:
 - Auth/profile: registration, login, current user, profile update
 - JWT utility routes: token, refresh, verify
 - Workspace hierarchy: organizations, divisions, projects
-- Invitations and membership onboarding
+- Member lists: organization, division, and project member endpoints
+- Invitations and membership onboarding (auto-accept on registration)
 - Documents and downloads
-- Tasks and task status updates
+- Tasks with individual assignees and self-assignment
 - Announcements
-- Calendar events, meetings, and milestones
+- Calendar events with individual and division assignees
 - Notifications and reminder generation
 - Dashboard aggregation
 

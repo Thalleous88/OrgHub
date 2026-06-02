@@ -35,14 +35,17 @@ from .permissions import (
 from .serializers import (
     AnnouncementSerializer,
     CalendarEventSerializer,
+    DivisionMembershipSerializer,
     DivisionSerializer,
     EmailTokenObtainPairSerializer,
     InvitationAcceptSerializer,
     InvitationCreateSerializer,
     InvitationSerializer,
     NotificationSerializer,
+    OrganizationMembershipSerializer,
     OrganizationSerializer,
     ProfileSerializer,
+    ProjectMembershipSerializer,
     ProjectSerializer,
     RegisterSerializer,
     ResourceDocumentSerializer,
@@ -110,11 +113,12 @@ class DashboardView(APIView):
         profile = getattr(user, "profile", None)
         memberships = UserSerializer(user, context={"request": request}).data["memberships"]
 
-        task_queryset = Task.objects.select_related(
+        task_queryset = Task.objects.prefetch_related(
+            "assigned_to",
+        ).select_related(
             "division__organization",
             "project__division__organization",
             "created_by",
-            "assigned_to",
         )
         managed_task_filter = (
             Q(
@@ -377,9 +381,7 @@ class ProjectListCreateView(generics.ListCreateAPIView):
         ).distinct()
 
 
-class ScopeInvitationCreateView(generics.CreateAPIView):
-    serializer_class = InvitationCreateSerializer
-
+class ScopeInvitationCreateView(APIView):
     scope_model = None
     scope_url_kwarg = "pk"
 
@@ -389,16 +391,42 @@ class ScopeInvitationCreateView(generics.CreateAPIView):
             pk=self.kwargs[self.scope_url_kwarg],
         )
 
-    def get_serializer_context(self):
-        context = super().get_serializer_context()
-        context["scope"] = self.get_scope()
-        return context
+    def post(self, request, *args, **kwargs):
+        scope = self.get_scope()
+        emails = request.data.get("emails", [])
+        role = request.data.get("role")
+        expires_at = request.data.get("expires_at")
 
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        invitation = serializer.save()
-        return Response(InvitationSerializer(invitation).data, status=201)
+        if not emails:
+            emails = [request.data.get("email", "")]
+        emails = [e.strip().lower() for e in emails if e and e.strip()]
+
+        if not emails:
+            return Response(
+                {"detail": "At least one email is required."},
+                status=400,
+            )
+
+        invitations = []
+        errors = []
+        for email in emails:
+            serializer = InvitationCreateSerializer(
+                data={"email": email, "role": role, "expires_at": expires_at},
+                context={"request": request, "scope": scope},
+            )
+            if serializer.is_valid():
+                invitation = serializer.save()
+                invitations.append(InvitationSerializer(invitation, context={"request": request}).data)
+            else:
+                errors.append({"email": email, "errors": serializer.errors})
+
+        if errors and not invitations:
+            return Response({"detail": "All invitations failed.", "errors": errors}, status=400)
+
+        return Response(
+            {"invitations": invitations, "errors": errors} if errors else invitations,
+            status=201 if invitations else 400,
+        )
 
 
 class OrganizationInvitationCreateView(ScopeInvitationCreateView):
@@ -728,11 +756,11 @@ class TaskListCreateView(generics.ListCreateAPIView):
                     project__division__organization__memberships__is_active=True,
                 )
             )
+            .prefetch_related("assigned_to")
             .select_related(
                 "division__organization",
                 "project__division__organization",
                 "created_by",
-                "assigned_to",
             )
             .distinct()
         )
@@ -740,11 +768,12 @@ class TaskListCreateView(generics.ListCreateAPIView):
 
 class TaskDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = TaskSerializer
-    queryset = Task.objects.select_related(
+    queryset = Task.objects.prefetch_related(
+        "assigned_to",
+    ).select_related(
         "division__organization",
         "project__division__organization",
         "created_by",
-        "assigned_to",
     )
 
     def get_object(self):
@@ -757,3 +786,64 @@ class TaskDetailView(generics.RetrieveUpdateDestroyAPIView):
         if not can_delete_task(self.request.user, instance):
             raise PermissionDenied("You do not have permission to delete this task.")
         instance.delete()
+
+
+class OrganizationMemberListView(generics.ListAPIView):
+    serializer_class = OrganizationMembershipSerializer
+
+    def get_queryset(self):
+        organization = generics.get_object_or_404(Organization, pk=self.kwargs["pk"])
+        if not OrganizationMembership.objects.filter(
+            organization=organization,
+            user=self.request.user,
+            is_active=True,
+        ).exists():
+            raise PermissionDenied("You do not have access to this organization's members.")
+        return OrganizationMembership.objects.filter(
+            organization=organization,
+            is_active=True,
+        ).select_related("user__profile").order_by("user__email")
+
+
+class DivisionMemberListView(generics.ListAPIView):
+    serializer_class = DivisionMembershipSerializer
+
+    def get_queryset(self):
+        division = generics.get_object_or_404(Division, pk=self.kwargs["pk"])
+        if not (
+            OrganizationMembership.objects.filter(
+                organization=division.organization,
+                user=self.request.user,
+                is_active=True,
+            ).exists()
+        ):
+            raise PermissionDenied("You do not have access to this division's members.")
+        return DivisionMembership.objects.filter(
+            division=division,
+            is_active=True,
+        ).select_related("user__profile").order_by("user__email")
+
+
+class ProjectMemberListView(generics.ListAPIView):
+    serializer_class = ProjectMembershipSerializer
+
+    def get_queryset(self):
+        project = generics.get_object_or_404(Project, pk=self.kwargs["pk"])
+        if not (
+            DivisionMembership.objects.filter(
+                division=project.division,
+                user=self.request.user,
+                is_active=True,
+            ).exists()
+            or OrganizationMembership.objects.filter(
+                organization=project.division.organization,
+                user=self.request.user,
+                role=OrganizationMembership.Role.CORE_BOARD,
+                is_active=True,
+            ).exists()
+        ):
+            raise PermissionDenied("You do not have access to this project's members.")
+        return ProjectMembership.objects.filter(
+            project=project,
+            is_active=True,
+        ).select_related("user__profile").order_by("user__email")

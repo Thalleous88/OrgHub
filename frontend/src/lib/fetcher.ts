@@ -1,6 +1,6 @@
 import { ApiError, buildApiError } from './apiError';
 
-const API_BASE = 'http://localhost:8000/api';
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000/api';
 
 const ACCESS_KEY = 'orghub_access_token';
 const REFRESH_KEY = 'orghub_refresh_token';

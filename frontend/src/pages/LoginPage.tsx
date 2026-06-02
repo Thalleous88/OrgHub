@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import './LoginPage.css';
 
@@ -193,7 +193,7 @@ export default function LoginPage() {
           </form>
             
           <p className="login-card__help">
-            Do not have an account?  <a href="register">Register Now</a>
+            Do not have an account?  <Link to="/register">Register Now</Link>
           </p>
         </div>
       </div>

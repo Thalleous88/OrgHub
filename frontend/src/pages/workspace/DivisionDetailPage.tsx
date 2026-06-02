@@ -42,7 +42,7 @@ export default function DivisionDetailPage() {
   const divisionId = Number(divisionIdParam);
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { canManageDivision, isCoreBoard, isDivisionMember, divisionRole, memberships } = useWorkspace();
+  const { canManageDivision, isDivisionMember, divisionRole, memberships } = useWorkspace();
 
   const { data: divisions, isLoading: divsLoading } = useDivisions();
   const { data: organizations } = useOrganizations();
@@ -85,7 +85,6 @@ export default function DivisionDetailPage() {
     [tasks, divisionId, divisionProjects],
   );
 
-  const orgIsCoreBoard = organization ? isCoreBoard(organization.id) : false;
   const canManage = organization ? canManageDivision(organization.id, divisionId) : false;
   const isMember = isDivisionMember(divisionId);
   const role = divisionRole(divisionId);
@@ -295,7 +294,7 @@ export default function DivisionDetailPage() {
                           {m.email}
                         </td>
                         <td style={{ padding: '0.5rem 0.75rem' }}>
-                          <Badge variant={m.role === 'DIVISION_HEAD' ? 'teal' : 'gray'}>
+                          <Badge variant={m.role === 'DIVISION_HEAD' ? 'teal' : 'neutral'}>
                             {m.role.replace('_', ' ')}
                           </Badge>
                         </td>

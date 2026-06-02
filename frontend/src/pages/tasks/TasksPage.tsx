@@ -54,7 +54,7 @@ export default function TasksPage() {
   const filteredTasks = useMemo(() => {
     if (!tasks) return [];
     let list: Task[] = tasks;
-    if (view === 'mine') list = list.filter((t) => t.assigned_to === user?.id);
+    if (view === 'mine') list = list.filter((t) => t.assigned_to.includes(user?.id ?? -1));
     else if (view === 'created') list = list.filter((t) => t.created_by === user?.id);
     else if (view === 'managed') {
       const managedIds = new Set((dashboard?.tasks?.managed ?? []).map((t) => t.id));

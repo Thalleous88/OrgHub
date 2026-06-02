@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Modal, Badge, Button } from '../ui';
 import type { Announcement, AnnouncementPriority } from '../../types/api';
 import { useDeleteAnnouncement } from '../../hooks/queries/useAnnouncements';

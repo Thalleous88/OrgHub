@@ -41,7 +41,7 @@ export default function KanbanBoard({ tasks, currentUserId, onSelect }: KanbanBo
     if (
       currentUserId !== undefined &&
       task.created_by !== currentUserId &&
-      task.assigned_to !== currentUserId
+      !task.assigned_to.includes(currentUserId)
     ) {
       toast.error('Only the task creator or assignee can change status.');
       return;

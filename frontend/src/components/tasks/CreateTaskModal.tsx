@@ -2,9 +2,9 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Modal, Field, Input, Textarea, Select, Button, useToast } from '../ui';
 import { useCreateTask } from '../../hooks/queries/useTasks';
 import { useDivisionMembers, useProjectMembers } from '../../hooks/queries/useWorkspace';
-import { useAuth } from '../../context/AuthContext';
 import { getApiErrorMessage } from '../../lib/apiError';
 import type { MemberItem, TaskStatus } from '../../types/api';
+import type { TaskCreateInput } from '../../services/tasks';
 
 type ScopeType = 'personal' | 'division' | 'project';
 
@@ -17,7 +17,6 @@ interface Props {
 }
 
 export default function CreateTaskModal({ open, onClose, defaultScope, divisions = [], projects = [] }: Props) {
-  const { user } = useAuth();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState<TaskStatus>('ToDo');
@@ -74,21 +73,18 @@ export default function CreateTaskModal({ open, onClose, defaultScope, divisions
     setError('');
 
     try {
-      const payload: Record<string, unknown> = {
+      const payload: TaskCreateInput = {
         title,
         description,
         status,
         due_at: dueAt ? new Date(dueAt).toISOString() : null,
+        assigned_emails: scopeType !== 'personal' ? selectedEmails : [],
       };
 
       if (scopeType === 'division') {
         payload.division = scopeId;
       } else if (scopeType === 'project') {
         payload.project = scopeId;
-      }
-
-      if (scopeType !== 'personal' && selectedEmails.length > 0) {
-        payload.assigned_emails = selectedEmails;
       }
 
       await createMut.mutateAsync(payload);

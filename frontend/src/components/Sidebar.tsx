@@ -1,3 +1,4 @@
+import { createContext, useContext, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLocation, useNavigate } from 'react-router-dom';
 import './Sidebar.css';
@@ -8,6 +9,20 @@ interface NavItem {
   path: string;
   matchPrefix?: boolean;
   icon: React.ReactNode;
+}
+
+interface SidebarContextValue {
+  collapsed: boolean;
+  toggleCollapsed: () => void;
+}
+
+const SidebarContext = createContext<SidebarContextValue>({
+  collapsed: false,
+  toggleCollapsed: () => {},
+});
+
+export function useSidebar() {
+  return useContext(SidebarContext);
 }
 
 const navItems: NavItem[] = [
@@ -103,10 +118,11 @@ function isActive(item: NavItem, pathname: string): boolean {
   return pathname === item.path;
 }
 
-export default function Sidebar() {
+function SidebarInner() {
   const location = useLocation();
   const navigate = useNavigate();
   const { logoutAction } = useAuth();
+  const { collapsed, toggleCollapsed } = useSidebar();
 
   const handleLogout = () => {
     logoutAction();
@@ -114,7 +130,7 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="sidebar animate-slide-in-left" id="main-sidebar">
+    <aside className={`sidebar${collapsed ? ' sidebar--collapsed' : ''}`} id="main-sidebar">
       <div className="sidebar__logo">
         <div className="sidebar__logo-icon">
           <svg width="22" height="22" viewBox="0 0 28 28" fill="none">
@@ -128,10 +144,10 @@ export default function Sidebar() {
             </defs>
           </svg>
         </div>
-        <div className="sidebar__logo-info">
+        <span className="sidebar__logo-info">
           <span className="sidebar__logo-name">OrgHub</span>
           <span className="sidebar__logo-sub">STUDENT PORTAL</span>
-        </div>
+        </span>
       </div>
 
       <nav className="sidebar__nav">
@@ -143,6 +159,7 @@ export default function Sidebar() {
               className={`sidebar__nav-item ${active ? 'sidebar__nav-item--active' : ''}`}
               onClick={() => navigate(item.path)}
               id={`nav-${item.id}`}
+              title={collapsed ? item.label : undefined}
             >
               <span className="sidebar__nav-icon">{item.icon}</span>
               <span className="sidebar__nav-label">{item.label}</span>
@@ -161,6 +178,7 @@ export default function Sidebar() {
               className={`sidebar__nav-item ${active ? 'sidebar__nav-item--active' : ''}`}
               onClick={() => navigate(item.path)}
               id={`nav-${item.id}`}
+              title={collapsed ? item.label : undefined}
             >
               <span className="sidebar__nav-icon">{item.icon}</span>
               <span className="sidebar__nav-label">{item.label}</span>
@@ -171,6 +189,7 @@ export default function Sidebar() {
           className="sidebar__nav-item sidebar__nav-item--logout"
           onClick={handleLogout}
           id="nav-logout"
+          title={collapsed ? 'Log Out' : undefined}
         >
           <span className="sidebar__nav-icon">
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -179,7 +198,34 @@ export default function Sidebar() {
           </span>
           <span className="sidebar__nav-label">Log Out</span>
         </button>
+
+        <button
+          className="sidebar__toggle"
+          onClick={toggleCollapsed}
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 18 18"
+            fill="none"
+            className={`sidebar__toggle-icon${collapsed ? ' sidebar__toggle-icon--flipped' : ''}`}
+          >
+            <path d="M11 4l-5 5 5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
       </div>
     </aside>
+  );
+}
+
+export default function Sidebar() {
+  const [collapsed, setCollapsed] = useState(false);
+
+  return (
+    <SidebarContext.Provider value={{ collapsed, toggleCollapsed: () => setCollapsed((c) => !c) }}>
+      <SidebarInner />
+    </SidebarContext.Provider>
   );
 }

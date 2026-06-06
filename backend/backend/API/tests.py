@@ -178,6 +178,164 @@ class MembershipAPITests(APITestCase):
             ).exists()
         )
 
+    def test_member_can_leave_organization_and_child_memberships_are_deactivated(self):
+        organization = Organization.objects.create(
+            name="OrgHub",
+            created_by=self.core_user,
+        )
+        OrganizationMembership.objects.create(
+            organization=organization,
+            user=self.core_user,
+            role=OrganizationMembership.Role.CORE_BOARD,
+        )
+        organization_membership = OrganizationMembership.objects.create(
+            organization=organization,
+            user=self.member_user,
+            role=OrganizationMembership.Role.MEMBER,
+        )
+        division = Division.objects.create(organization=organization, name="Operations")
+        division_membership = DivisionMembership.objects.create(
+            division=division,
+            user=self.member_user,
+            role=DivisionMembership.Role.MEMBER,
+        )
+        project = Project.objects.create(division=division, name="Orientation")
+        project_membership = ProjectMembership.objects.create(
+            project=project,
+            user=self.member_user,
+            role=ProjectMembership.Role.MEMBER,
+        )
+
+        self.client.force_authenticate(self.member_user)
+        response = self.client.post(
+            reverse("organization_leave", kwargs={"pk": organization.pk}),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        organization_membership.refresh_from_db()
+        division_membership.refresh_from_db()
+        project_membership.refresh_from_db()
+        self.assertFalse(organization_membership.is_active)
+        self.assertFalse(division_membership.is_active)
+        self.assertFalse(project_membership.is_active)
+
+    def test_last_core_board_member_cannot_leave_organization(self):
+        organization = Organization.objects.create(
+            name="OrgHub",
+            created_by=self.core_user,
+        )
+        membership = OrganizationMembership.objects.create(
+            organization=organization,
+            user=self.core_user,
+            role=OrganizationMembership.Role.CORE_BOARD,
+        )
+
+        self.client.force_authenticate(self.core_user)
+        response = self.client.post(
+            reverse("organization_leave", kwargs={"pk": organization.pk}),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        membership.refresh_from_db()
+        self.assertTrue(membership.is_active)
+
+    def test_core_board_member_can_leave_when_another_core_board_member_exists(self):
+        organization = Organization.objects.create(
+            name="OrgHub",
+            created_by=self.core_user,
+        )
+        membership = OrganizationMembership.objects.create(
+            organization=organization,
+            user=self.core_user,
+            role=OrganizationMembership.Role.CORE_BOARD,
+        )
+        OrganizationMembership.objects.create(
+            organization=organization,
+            user=self.member_user,
+            role=OrganizationMembership.Role.CORE_BOARD,
+        )
+
+        self.client.force_authenticate(self.core_user)
+        response = self.client.post(
+            reverse("organization_leave", kwargs={"pk": organization.pk}),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        membership.refresh_from_db()
+        self.assertFalse(membership.is_active)
+
+    def test_outsider_cannot_leave_organization(self):
+        organization = Organization.objects.create(
+            name="OrgHub",
+            created_by=self.core_user,
+        )
+
+        self.client.force_authenticate(self.member_user)
+        response = self.client.post(
+            reverse("organization_leave", kwargs={"pk": organization.pk}),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_core_board_can_invite_organization_member(self):
+        organization = Organization.objects.create(
+            name="OrgHub",
+            created_by=self.core_user,
+        )
+        OrganizationMembership.objects.create(
+            organization=organization,
+            user=self.core_user,
+            role=OrganizationMembership.Role.CORE_BOARD,
+        )
+
+        self.client.force_authenticate(self.core_user)
+        response = self.client.post(
+            reverse("organization_invite", kwargs={"pk": organization.pk}),
+            {"email": "invitee@example.com", "role": "MEMBER"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(
+            Invitation.objects.filter(
+                organization=organization,
+                email="invitee@example.com",
+                role=Invitation.Role.MEMBER,
+                status=Invitation.Status.PENDING,
+                invited_by=self.core_user,
+            ).exists()
+        )
+
+    def test_ordinary_member_cannot_invite_organization_member(self):
+        organization = Organization.objects.create(
+            name="OrgHub",
+            created_by=self.core_user,
+        )
+        OrganizationMembership.objects.create(
+            organization=organization,
+            user=self.member_user,
+            role=OrganizationMembership.Role.MEMBER,
+        )
+
+        self.client.force_authenticate(self.member_user)
+        response = self.client.post(
+            reverse("organization_invite", kwargs={"pk": organization.pk}),
+            {"email": "invitee@example.com", "role": "MEMBER"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(
+            Invitation.objects.filter(
+                organization=organization,
+                email="invitee@example.com",
+            ).exists()
+        )
+
     def test_only_core_board_can_assign_division_head(self):
         organization = Organization.objects.create(
             name="OrgHub",

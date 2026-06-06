@@ -23,6 +23,7 @@ from .views import (
     OrganizationCalendarEventListCreateView,
     OrganizationDocumentListCreateView,
     OrganizationInvitationCreateView,
+    OrganizationLeaveView,
     OrganizationListCreateView,
     OrganizationMemberListView,
     ProjectCalendarEventListCreateView,
@@ -61,6 +62,11 @@ urlpatterns = [
         "organizations/<int:pk>/invite/",
         OrganizationInvitationCreateView.as_view(),
         name="organization_invite",
+    ),
+    path(
+        "organizations/<int:pk>/leave/",
+        OrganizationLeaveView.as_view(),
+        name="organization_leave",
     ),
     path(
         "organizations/<int:pk>/documents/",

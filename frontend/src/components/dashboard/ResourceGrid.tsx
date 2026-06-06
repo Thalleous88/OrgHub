@@ -1,9 +1,9 @@
 import type { ReactElement } from 'react';
-import type { DashboardDocument } from '../services/api';
+import type { ResourceDocument } from '../../types/api';
 import './ResourceGrid.css';
 
 interface ResourceGridProps {
-  documents: DashboardDocument[];
+  documents: ResourceDocument[];
 }
 
 const scopeIcons: Record<string, ReactElement> = {

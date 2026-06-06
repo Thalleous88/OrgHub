@@ -1,8 +1,8 @@
-import type { DashboardTask } from '../services/api';
+import type { Task } from '../../types/api';
 import './DeadlineCard.css';
 
 interface DeadlineCardProps {
-  tasks: DashboardTask[];
+  tasks: Task[];
 }
 
 function getUrgencyInfo(dueAt: string | null): { label: string; className: string } {

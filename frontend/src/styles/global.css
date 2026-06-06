@@ -4,7 +4,7 @@
    OrgHub Design System
    ============================================================ */
 
-@import '../tokens.css';
+@import './tokens.css';
 
 /* --- Design Tokens --- */
 :root {

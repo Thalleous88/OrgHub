@@ -1,14 +1,13 @@
 import { useState } from 'react';
-import type { DashboardCalendarEvent } from '../services/api';
-import type { CalendarEvent } from '../types/api';
-import EventDetailModal from './calendar/EventDetailModal';
+import type { CalendarEvent } from '../../types/api';
+import EventDetailModal from '../calendar/EventDetailModal';
 import './MeetingCard.css';
 
 interface MeetingCardProps {
-  events: DashboardCalendarEvent[];
+  events: CalendarEvent[];
 }
 
-function isLiveNow(event: DashboardCalendarEvent): boolean {
+function isLiveNow(event: CalendarEvent): boolean {
   const now = new Date();
   const start = new Date(event.starts_at);
   const end = event.ends_at ? new Date(event.ends_at) : new Date(start.getTime() + 60 * 60 * 1000);
@@ -47,7 +46,7 @@ function getEventTypeIcon(type: string) {
   );
 }
 
-function toCalendarEvent(e: DashboardCalendarEvent): CalendarEvent {
+function toCalendarEvent(e: CalendarEvent): CalendarEvent {
   return {
     id: e.id,
     organization: e.organization,

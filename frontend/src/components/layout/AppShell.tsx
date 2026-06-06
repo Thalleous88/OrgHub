@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import Sidebar, { SidebarProvider, useSidebar } from '../Sidebar';
+import Sidebar, { SidebarProvider, useSidebar } from './Sidebar';
 import TopBar from './TopBar';
 import './AppShell.css';
 

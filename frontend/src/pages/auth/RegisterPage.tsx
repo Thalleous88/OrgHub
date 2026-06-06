@@ -1,15 +1,17 @@
 import { useState, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
-import "./LoginPage.css";
+import { useNavigate, Link } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
+import { getApiErrorMessage } from "../../lib/apiError";
+import "./AuthPage.css";
 
-const orgHubLogo = new URL("../assets/OrgHub Logo.png", import.meta.url).href;
+const orgHubLogo = new URL("../../assets/orghub-logo.png", import.meta.url).href;
 
-export default function LoginPage() {
+export default function RegisterPage() {
   const navigate = useNavigate();
-  const { loginAction } = useAuth();
+  const { registerAction } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -17,21 +19,20 @@ export default function LoginPage() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError("");
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters.");
+      return;
+    }
+    if (password !== confirm) {
+      setError("Passwords do not match.");
+      return;
+    }
     setIsSubmitting(true);
-
     try {
-      await loginAction(email, password);
+      await registerAction(email, password);
       navigate("/dashboard");
     } catch (err) {
-      if (err instanceof TypeError && err.message === "Failed to fetch") {
-        setError(
-          "Unable to connect to the server. Please ensure the backend is running.",
-        );
-      } else if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("An unexpected error occurred.");
-      }
+      setError(getApiErrorMessage(err, "Could not create your account."));
     } finally {
       setIsSubmitting(false);
     }
@@ -39,7 +40,6 @@ export default function LoginPage() {
 
   return (
     <div className="login-page">
-      {/* Left Hero Panel */}
       <div className="login-hero">
         <div className="login-hero__content animate-fade-in-up">
           <div className="login-hero__logo">
@@ -54,17 +54,16 @@ export default function LoginPage() {
           </div>
 
           <h1 className="login-hero__title">
-            Empowering the next{" "}
-            <span className="gradient-text">generation of leaders.</span>
+            Start coordinating with{" "}
+            <span className="gradient-text">your campus organizations.</span>
           </h1>
 
           <p className="login-hero__subtitle">
-            The central nervous system for your university organizations. Manage
-            workflows, collaborate on projects, and lead with clarity.
+            Create an account, accept your invitation, and step into a workspace
+            built for student leaders.
           </p>
         </div>
 
-        {/* Decorative elements */}
         <div className="login-hero__decor">
           <div className="login-hero__orb login-hero__orb--1"></div>
           <div className="login-hero__orb login-hero__orb--2"></div>
@@ -72,15 +71,16 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Right Login Panel */}
       <div className="login-panel">
         <div className="login-card animate-fade-in">
-          <h2 className="login-card__title">Welcome back</h2>
-          <p className="login-card__subtitle">
-            Log in to access your student workspace
-          </p>
+          <h2 className="login-card__title">Create your account</h2>
+          <p className="login-card__subtitle">Sign up to access OrgHub</p>
 
-          <form onSubmit={handleSubmit} className="login-form" id="login-form">
+          <form
+            onSubmit={handleSubmit}
+            className="login-form"
+            id="register-form"
+          >
             {error && (
               <div className="login-form__error animate-fade-in">
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -133,7 +133,7 @@ export default function LoginPage() {
                 <input
                   id="email-input"
                   type="email"
-                  placeholder="name@org.net"
+                  placeholder="name@university.edu"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -175,11 +175,11 @@ export default function LoginPage() {
                 <input
                   id="password-input"
                   type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
+                  placeholder="At least 8 characters"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  autoComplete="current-password"
+                  autoComplete="new-password"
                   minLength={8}
                 />
                 <button
@@ -230,17 +230,59 @@ export default function LoginPage() {
               </div>
             </div>
 
+            <div className="login-form__group">
+              <label htmlFor="confirm-input" className="login-form__label">
+                CONFIRM PASSWORD
+              </label>
+              <div className="login-form__input-wrapper">
+                <svg
+                  className="login-form__input-icon"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 18 18"
+                  fill="none"
+                >
+                  <rect
+                    x="4"
+                    y="8"
+                    width="10"
+                    height="8"
+                    rx="2"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                  />
+                  <path
+                    d="M6 8V6a3 3 0 116 0v2"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                  />
+                  <circle cx="9" cy="12" r="1" fill="currentColor" />
+                </svg>
+                <input
+                  id="confirm-input"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Confirm password"
+                  value={confirm}
+                  onChange={(e) => setConfirm(e.target.value)}
+                  required
+                  autoComplete="new-password"
+                  minLength={8}
+                />
+              </div>
+            </div>
+
             <button
               type="submit"
               className="login-form__submit"
-              id="login-submit-btn"
+              id="register-submit-btn"
               disabled={isSubmitting}
             >
               {isSubmitting ? (
                 <span className="login-form__spinner"></span>
               ) : (
                 <>
-                  Sign In to Portal
+                  Create Account
                   <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
                     <path
                       d="M4 9h10M10 5l4 4-4 4"
@@ -256,7 +298,7 @@ export default function LoginPage() {
           </form>
 
           <p className="login-card__help">
-            Do not have an account? <Link to="/register">Register Now</Link>
+            Already have an account? <Link to="/">Sign in</Link>
           </p>
         </div>
       </div>

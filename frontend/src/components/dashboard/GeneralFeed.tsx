@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { DashboardAnnouncement } from '../services/api';
-import AnnouncementDetailModal from './announcements/AnnouncementDetailModal';
-import type { Announcement } from '../types/api';
+import AnnouncementDetailModal from '../announcements/AnnouncementDetailModal';
+import type { Announcement } from '../../types/api';
 import './GeneralFeed.css';
 
 interface GeneralFeedProps {
-  announcements: DashboardAnnouncement[];
+  announcements: Announcement[];
 }
 
 function timeAgo(dateStr: string): string {
@@ -50,7 +49,7 @@ export default function GeneralFeed({ announcements }: GeneralFeedProps) {
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .slice(0, 5);
 
-  const toAnnouncement = (a: DashboardAnnouncement): Announcement => ({
+  const toAnnouncement = (a: Announcement): Announcement => ({
     id: a.id,
     organization: a.organization,
     title: a.title,

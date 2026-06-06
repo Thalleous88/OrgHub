@@ -1,5 +1,6 @@
 import { createContext, useContext, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useWorkspace } from '../context/WorkspaceContext';
 import { useLocation, useNavigate } from 'react-router-dom';
 import './Sidebar.css';
 
@@ -122,6 +123,7 @@ function SidebarInner() {
   const location = useLocation();
   const navigate = useNavigate();
   const { logoutAction } = useAuth();
+  const { currentOrganizationId } = useWorkspace();
   const { collapsed, toggleCollapsed } = useSidebar();
 
   const handleLogout = () => {
@@ -157,7 +159,13 @@ function SidebarInner() {
             <button
               key={item.id}
               className={`sidebar__nav-item ${active ? 'sidebar__nav-item--active' : ''}`}
-              onClick={() => navigate(item.path)}
+              onClick={() =>
+                navigate(
+                  item.id === 'workspace' && currentOrganizationId
+                    ? `/workspace/orgs/${currentOrganizationId}`
+                    : item.path,
+                )
+              }
               id={`nav-${item.id}`}
               title={collapsed ? item.label : undefined}
             >

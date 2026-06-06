@@ -58,15 +58,34 @@ interface DivisionCardProps {
   openTasksCount?: number;
 }
 
+export function DivisionIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M10 12h4" />
+      <path d="M10 8h4" />
+      <path d="M14 21v-3a2 2 0 0 0-4 0v3" />
+      <path d="M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2" />
+      <path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16" />
+    </svg>
+  );
+}
+
 export function DivisionCard({ id, name, role, description, projectsCount, openTasksCount }: DivisionCardProps) {
   return (
     <Link to={`/workspace/divisions/${id}`} className="ws-card">
       <div className="ws-card__head">
         <div className="ws-card__icon ws-card__icon--div">
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-            <path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
-            <path d="M14 17h6M17 14v6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-          </svg>
+          <DivisionIcon />
         </div>
         {role && <Badge variant="teal">{role.replace('_', ' ')}</Badge>}
       </div>

@@ -287,18 +287,6 @@
   padding-right: 36px;
 }
 
-.task-due-input {
-  display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
-  gap: var(--space-xs);
-}
-
-@media (max-width: 520px) {
-  .task-due-input {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
 /* --- Tabs --- */
 .ui-tabs {
   display: flex;

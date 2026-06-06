@@ -1,12 +1,15 @@
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useWorkspace } from "../../context/WorkspaceContext";
+import { useDashboard } from "../../hooks/queries/useDashboard";
 import "./TopBar.css";
 
 export default function TopBar() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { currentOrganization } = useWorkspace();
+  const { data: dashboard } = useDashboard();
+  const pendingInvitationCount = dashboard?.pending_invitations.length ?? 0;
 
   const displayName = user?.profile?.full_name || user?.email || "User";
   const initials = displayName
@@ -75,6 +78,12 @@ export default function TopBar() {
             <span className="topbar__user-name">{displayName}</span>
             <span className="topbar__user-role">{role}</span>
           </div>
+          {pendingInvitationCount > 0 && (
+            <span
+              className="topbar__user-pending-dot"
+              aria-label={`${pendingInvitationCount} pending invitation${pendingInvitationCount === 1 ? "" : "s"}`}
+            />
+          )}
         </button>
       </div>
     </header>

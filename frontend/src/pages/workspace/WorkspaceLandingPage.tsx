@@ -10,14 +10,11 @@ import {
   Field,
   Select,
 } from '../../components/ui';
-import { DivisionCard } from '../../components/workspace/WorkspaceCards';
+import { DivisionCard, DivisionIcon } from '../../components/workspace/WorkspaceCards';
 import CreateDivisionModal from '../../components/workspace/CreateDivisionModal';
 import { useDivisions, useOrganizations } from '../../hooks/queries/useWorkspace';
 import { useDashboard } from '../../hooks/queries/useDashboard';
 import { useAuth } from '../../context/AuthContext';
-import { useAcceptInvitation } from '../../hooks/queries/useInvitations';
-import { useToast } from '../../components/ui';
-import { getApiErrorMessage } from '../../lib/apiError';
 import '../../components/workspace/WorkspaceCards.css';
 
 type TabKey = 'divisions' | 'members';
@@ -27,8 +24,6 @@ export default function WorkspaceLandingPage() {
   const { data: divisions, isLoading: divsLoading } = useDivisions();
   const { data: organizations } = useOrganizations();
   const { data: dashboard } = useDashboard();
-  const acceptMut = useAcceptInvitation();
-  const toast = useToast();
 
   const [tab, setTab] = useState<TabKey>('divisions');
   const [createDivisionOpen, setCreateDivisionOpen] = useState(false);
@@ -52,17 +47,6 @@ export default function WorkspaceLandingPage() {
       setAdminOrgId(adminOrgs[0].id);
     }
   }, [adminOrgs, adminOrgId]);
-
-  const pending = dashboard?.pending_invitations ?? [];
-
-  const handleAccept = async (token: string) => {
-    try {
-      await acceptMut.mutateAsync(token);
-      toast.success('Invitation accepted.');
-    } catch (err) {
-      toast.error(getApiErrorMessage(err, 'Could not accept the invitation.'));
-    }
-  };
 
   const headerActions = (() => {
     if (tab === 'divisions' && adminOrgs.length > 0 && adminOrgId !== undefined) {
@@ -93,49 +77,6 @@ export default function WorkspaceLandingPage() {
         subtitle="Browse the divisions and members you have access to."
         actions={headerActions}
       />
-
-      {pending.length > 0 && (
-        <div className="ws-section animate-fade-in-up delay-1">
-          <div className="ws-section__head">
-            <h2 className="ws-section__title">
-              <Badge variant="amber">{pending.length}</Badge>
-              Pending invitations
-            </h2>
-          </div>
-          <div className="ws-grid">
-            {pending.map((inv) => (
-              <div key={inv.id} className="ws-card" style={{ cursor: 'default' }}>
-                <div className="ws-card__head">
-                  <div className="ws-card__icon ws-card__icon--proj">
-                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                      <path d="M3 6l7 5 7-5M3 6v8a2 2 0 002 2h10a2 2 0 002-2V6M3 6a2 2 0 012-2h10a2 2 0 012 2" stroke="currentColor" strokeWidth="1.5" />
-                    </svg>
-                  </div>
-                  <Badge variant="amber">{inv.role.replace('_', ' ')}</Badge>
-                </div>
-                <h3 className="ws-card__title">
-                  {inv.organization
-                    ? 'Organization invitation'
-                    : inv.division
-                    ? 'Division invitation'
-                    : 'Project invitation'}
-                </h3>
-                <p className="ws-card__desc">
-                  Sent to <strong>{inv.email}</strong>
-                </p>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  loading={acceptMut.isPending}
-                  onClick={() => handleAccept(inv.token)}
-                >
-                  Accept invitation
-                </Button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       <Tabs
         active={tab}
@@ -168,10 +109,7 @@ export default function WorkspaceLandingPage() {
           ) : !divisions || divisions.length === 0 ? (
             <EmptyState
               icon={
-                <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-                  <path d="M6 6h8v8H6zM18 6h8v8h-8zM6 18h8v8H6z" stroke="var(--text-muted)" strokeWidth="1.5" strokeLinejoin="round"/>
-                  <path d="M18 23h8M22 19v8" stroke="var(--text-muted)" strokeWidth="1.5" strokeLinecap="round"/>
-                </svg>
+                <DivisionIcon size={32} />
               }
               title="No divisions yet"
               description={adminOrgs.length > 0 ? 'Create a division to organize your teams.' : 'Once you are added to a division it will appear here.'}
@@ -242,9 +180,7 @@ export default function WorkspaceLandingPage() {
                       <div key={`div-${d.id}`} className="ws-card" style={{ cursor: 'default' }}>
                         <div className="ws-card__head">
                           <div className="ws-card__icon ws-card__icon--div">
-                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                              <path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
-                            </svg>
+                            <DivisionIcon />
                           </div>
                           <Badge variant="teal">{d.role.replace('_', ' ')}</Badge>
                         </div>

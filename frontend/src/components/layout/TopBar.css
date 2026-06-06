@@ -132,6 +132,16 @@
     color: var(--text-muted);
 }
 
+.topbar__user-pending-dot {
+    width: 8px;
+    height: 8px;
+    flex: 0 0 auto;
+    margin-left: 2px;
+    border-radius: 50%;
+    background: var(--amber-400);
+    box-shadow: 0 0 0 3px oklch(84% 0.16 82 / 0.12);
+}
+
 @media (max-width: 768px) {
     .topbar {
         padding: 0 var(--space-md);

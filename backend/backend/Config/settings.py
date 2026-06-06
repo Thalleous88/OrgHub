@@ -11,8 +11,8 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 import os
-from urllib.parse import parse_qsl, urlparse
 
+import dj_database_url
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -102,23 +102,22 @@ WSGI_APPLICATION = "Config.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-# Replace the DATABASES section of your settings.py with this
-tmpPostgres = urlparse(os.getenv("DATABASE_URL"))
-
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": tmpPostgres.path.replace("/", ""),
-        "USER": tmpPostgres.username,
-        "PASSWORD": tmpPostgres.password,
-        "HOST": tmpPostgres.hostname,
-        "PORT": 5432,
-        "OPTIONS": dict(parse_qsl(tmpPostgres.query)),
+        **dj_database_url.config(
+            conn_max_age=600,
+            conn_health_checks=True,
+            ssl_require=not DEBUG,
+        ),
         "TEST": {
-            "NAME": os.getenv("TEST_DATABASE_NAME", "test_neondb"),
+            "NAME": os.getenv("TEST_DATABASE_NAME", "test_orghub"),
         },
     }
 }
+
+DATABASES["default"].setdefault("OPTIONS", {})["options"] = (
+    f"-c search_path={os.getenv('DATABASE_SCHEMA', 'public')}"
+)
 
 
 # Password validation

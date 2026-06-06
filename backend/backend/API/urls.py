@@ -10,6 +10,7 @@ from .views import (
     CurrentUserView,
     DashboardView,
     DivisionCalendarEventListCreateView,
+    DivisionDetailView,
     DivisionDocumentListCreateView,
     DivisionInvitationCreateView,
     DivisionListCreateView,
@@ -27,6 +28,7 @@ from .views import (
     OrganizationListCreateView,
     OrganizationMemberListView,
     ProjectCalendarEventListCreateView,
+    ProjectDetailView,
     ProjectDocumentListCreateView,
     ProjectInvitationCreateView,
     ProjectListCreateView,
@@ -84,6 +86,7 @@ urlpatterns = [
         name="organization_calendar_events",
     ),
     path("divisions/", DivisionListCreateView.as_view(), name="division_list"),
+    path("divisions/<int:pk>/", DivisionDetailView.as_view(), name="division_detail"),
     path(
         "divisions/<int:pk>/members/",
         DivisionMemberListView.as_view(),
@@ -105,6 +108,7 @@ urlpatterns = [
         name="division_calendar_events",
     ),
     path("projects/", ProjectListCreateView.as_view(), name="project_list"),
+    path("projects/<int:pk>/", ProjectDetailView.as_view(), name="project_detail"),
     path(
         "projects/<int:pk>/members/",
         ProjectMemberListView.as_view(),

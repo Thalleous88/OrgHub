@@ -9,12 +9,14 @@ import {
 } from '../../services/organizations';
 import {
   createDivision,
+  deleteDivision,
   inviteToDivision,
   listDivisionMembers,
   listDivisions,
 } from '../../services/divisions';
 import {
   createProject,
+  deleteProject,
   inviteToProject,
   listProjectMembers,
   listProjects,
@@ -88,6 +90,24 @@ export function useCreateDivision() {
   });
 }
 
+export function useDeleteDivision() {
+  const qc = useQueryClient();
+  const { refreshUser } = useAuth();
+  return useMutation({
+    mutationFn: deleteDivision,
+    onSuccess: async () => {
+      await refreshUser();
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: queryKeys.divisions }),
+        qc.invalidateQueries({ queryKey: queryKeys.projects }),
+        qc.invalidateQueries({ queryKey: queryKeys.tasks }),
+        qc.invalidateQueries({ queryKey: queryKeys.dashboard }),
+        qc.invalidateQueries({ queryKey: queryKeys.announcementsFeed }),
+      ]);
+    },
+  });
+}
+
 export function useCreateProject() {
   const qc = useQueryClient();
   return useMutation({
@@ -95,6 +115,23 @@ export function useCreateProject() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.projects });
       qc.invalidateQueries({ queryKey: queryKeys.dashboard });
+    },
+  });
+}
+
+export function useDeleteProject() {
+  const qc = useQueryClient();
+  const { refreshUser } = useAuth();
+  return useMutation({
+    mutationFn: deleteProject,
+    onSuccess: async () => {
+      await refreshUser();
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: queryKeys.projects }),
+        qc.invalidateQueries({ queryKey: queryKeys.tasks }),
+        qc.invalidateQueries({ queryKey: queryKeys.dashboard }),
+        qc.invalidateQueries({ queryKey: queryKeys.announcementsFeed }),
+      ]);
     },
   });
 }

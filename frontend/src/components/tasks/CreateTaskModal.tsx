@@ -3,6 +3,7 @@ import { Modal, Field, Input, Textarea, Select, Button, useToast } from '../ui';
 import { useCreateTask } from '../../hooks/queries/useTasks';
 import { useDivisionMembers, useProjectMembers } from '../../hooks/queries/useWorkspace';
 import { getApiErrorMessage } from '../../lib/apiError';
+import TaskDueInput from './TaskDueInput';
 import type { MemberItem, TaskStatus } from '../../types/api';
 import type { TaskCreateInput } from '../../services/tasks';
 
@@ -148,11 +149,7 @@ export default function CreateTaskModal({ open, onClose, defaultScope, divisions
             </Select>
           </Field>
           <Field label="Due">
-            <Input
-              type="datetime-local"
-              value={dueAt}
-              onChange={(e) => setDueAt(e.target.value)}
-            />
+            <TaskDueInput value={dueAt} onChange={setDueAt} />
           </Field>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>

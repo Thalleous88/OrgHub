@@ -1,8 +1,10 @@
-import { createContext, useContext, useState } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { useWorkspace } from '../context/WorkspaceContext';
-import { useLocation, useNavigate } from 'react-router-dom';
-import './Sidebar.css';
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { useAuth } from "../context/AuthContext";
+import { useWorkspace } from "../context/WorkspaceContext";
+import { useLocation, useNavigate } from "react-router-dom";
+import "./Sidebar.css";
+
+const orgHubLogo = new URL("../assets/OrgHub Logo.png", import.meta.url).href;
 
 interface NavItem {
   id: string;
@@ -17,6 +19,8 @@ interface SidebarContextValue {
   toggleCollapsed: () => void;
 }
 
+const SIDEBAR_COLLAPSED_KEY = 'orghub_sidebar_collapsed';
+
 const SidebarContext = createContext<SidebarContextValue>({
   collapsed: false,
   toggleCollapsed: () => {},
@@ -26,73 +30,170 @@ export function useSidebar() {
   return useContext(SidebarContext);
 }
 
+export function SidebarProvider({ children }: { children: ReactNode }) {
+  const [collapsed, setCollapsed] = useState(() => localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1');
+
+  useEffect(() => {
+    localStorage.setItem(SIDEBAR_COLLAPSED_KEY, collapsed ? '1' : '0');
+  }, [collapsed]);
+
+  return (
+    <SidebarContext.Provider value={{ collapsed, toggleCollapsed: () => setCollapsed((c) => !c) }}>
+      {children}
+    </SidebarContext.Provider>
+  );
+}
+
 const navItems: NavItem[] = [
   {
-    id: 'dashboard',
-    label: 'Dashboard',
-    path: '/dashboard',
+    id: "dashboard",
+    label: "Dashboard",
+    path: "/dashboard",
     icon: (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-        <rect x="2" y="2" width="7" height="7" rx="2" stroke="currentColor" strokeWidth="1.5"/>
-        <rect x="11" y="2" width="7" height="7" rx="2" stroke="currentColor" strokeWidth="1.5"/>
-        <rect x="2" y="11" width="7" height="7" rx="2" stroke="currentColor" strokeWidth="1.5"/>
-        <rect x="11" y="11" width="7" height="7" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+        <rect
+          x="2"
+          y="2"
+          width="7"
+          height="7"
+          rx="2"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        />
+        <rect
+          x="11"
+          y="2"
+          width="7"
+          height="7"
+          rx="2"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        />
+        <rect
+          x="2"
+          y="11"
+          width="7"
+          height="7"
+          rx="2"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        />
+        <rect
+          x="11"
+          y="11"
+          width="7"
+          height="7"
+          rx="2"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        />
       </svg>
     ),
   },
   {
-    id: 'workspace',
-    label: 'Workspace',
-    path: '/workspace',
+    id: "workspace",
+    label: "Workspace",
+    path: "/workspace",
     matchPrefix: true,
     icon: (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-        <path d="M3 5h14M3 10h14M3 15h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+        <path
+          d="M3 5h14M3 10h14M3 15h10"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
       </svg>
     ),
   },
   {
-    id: 'tasks',
-    label: 'Tasks',
-    path: '/tasks',
+    id: "tasks",
+    label: "Tasks",
+    path: "/tasks",
     icon: (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-        <rect x="3" y="3" width="14" height="14" rx="2" stroke="currentColor" strokeWidth="1.5"/>
-        <path d="M6 8l2 2 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M6 14h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+        <rect
+          x="3"
+          y="3"
+          width="14"
+          height="14"
+          rx="2"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        />
+        <path
+          d="M6 8l2 2 5-5"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M6 14h8"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
       </svg>
     ),
   },
   {
-    id: 'calendar',
-    label: 'Calendar',
-    path: '/calendar',
+    id: "calendar",
+    label: "Calendar",
+    path: "/calendar",
     icon: (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-        <rect x="2" y="4" width="16" height="14" rx="2" stroke="currentColor" strokeWidth="1.5"/>
-        <path d="M2 8h16" stroke="currentColor" strokeWidth="1.5"/>
-        <path d="M6 2v4M14 2v4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+        <rect
+          x="2"
+          y="4"
+          width="16"
+          height="14"
+          rx="2"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        />
+        <path d="M2 8h16" stroke="currentColor" strokeWidth="1.5" />
+        <path
+          d="M6 2v4M14 2v4"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
       </svg>
     ),
   },
   {
-    id: 'files',
-    label: 'Files',
-    path: '/files',
+    id: "files",
+    label: "Files",
+    path: "/files",
     icon: (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-        <path d="M3 4a2 2 0 012-2h4l2 2h4a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V4z" stroke="currentColor" strokeWidth="1.5"/>
+        <path
+          d="M3 4a2 2 0 012-2h4l2 2h4a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V4z"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        />
       </svg>
     ),
   },
   {
-    id: 'announcements',
-    label: 'Announcements',
-    path: '/announcements',
+    id: "announcements",
+    label: "Announcements",
+    path: "/announcements",
     icon: (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-        <path d="M3 8v4l11 5V3L3 8z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
-        <path d="M14 7v6M17 9v2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+        <path
+          d="M3 8v4l11 5V3L3 8z"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M14 7v6M17 9v2"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
       </svg>
     ),
   },
@@ -100,13 +201,25 @@ const navItems: NavItem[] = [
 
 const bottomItems: NavItem[] = [
   {
-    id: 'settings',
-    label: 'Settings',
-    path: '/settings',
+    id: "settings",
+    label: "Settings",
+    path: "/settings",
     icon: (
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-        <circle cx="10" cy="10" r="3" stroke="currentColor" strokeWidth="1.5"/>
-        <path d="M10 2v2M10 16v2M3.5 5l1.5 1.5M15 13.5l1.5 1.5M2 10h2M16 10h2M3.5 15l1.5-1.5M15 6.5l1.5-1.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+      <svg
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <path
+          d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"
+        />
+        <circle cx="12" cy="12" r="3" />
       </svg>
     ),
   },
@@ -128,27 +241,21 @@ function SidebarInner() {
 
   const handleLogout = () => {
     logoutAction();
-    navigate('/');
+    navigate("/");
   };
 
   return (
-    <aside className={`sidebar${collapsed ? ' sidebar--collapsed' : ''}`} id="main-sidebar">
+    <aside
+      className={`sidebar${collapsed ? " sidebar--collapsed" : ""}`}
+      id="main-sidebar"
+    >
       <div className="sidebar__logo">
         <div className="sidebar__logo-icon">
-          <svg width="22" height="22" viewBox="0 0 28 28" fill="none">
-            <rect width="28" height="28" rx="6" fill="url(#sb-logo-grad)" />
-            <path d="M8 10h12M8 14h8M8 18h10" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
-            <defs>
-              <linearGradient id="sb-logo-grad" x1="0" y1="0" x2="28" y2="28">
-                <stop stopColor="#14b8a6" />
-                <stop offset="1" stopColor="#10b981" />
-              </linearGradient>
-            </defs>
-          </svg>
+          <img className="sidebar__logo-img" src={orgHubLogo} alt="OrgHub" />
         </div>
         <span className="sidebar__logo-info">
           <span className="sidebar__logo-name">OrgHub</span>
-          <span className="sidebar__logo-sub">STUDENT PORTAL</span>
+          {/*<span className="sidebar__logo-sub">STUDENT PORTAL</span>*/}
         </span>
       </div>
 
@@ -158,10 +265,10 @@ function SidebarInner() {
           return (
             <button
               key={item.id}
-              className={`sidebar__nav-item ${active ? 'sidebar__nav-item--active' : ''}`}
+              className={`sidebar__nav-item ${active ? "sidebar__nav-item--active" : ""}`}
               onClick={() =>
                 navigate(
-                  item.id === 'workspace' && currentOrganizationId
+                  item.id === "workspace" && currentOrganizationId
                     ? `/workspace/orgs/${currentOrganizationId}`
                     : item.path,
                 )
@@ -171,7 +278,6 @@ function SidebarInner() {
             >
               <span className="sidebar__nav-icon">{item.icon}</span>
               <span className="sidebar__nav-label">{item.label}</span>
-              {active && <div className="sidebar__nav-indicator" />}
             </button>
           );
         })}
@@ -183,7 +289,7 @@ function SidebarInner() {
           return (
             <button
               key={item.id}
-              className={`sidebar__nav-item ${active ? 'sidebar__nav-item--active' : ''}`}
+              className={`sidebar__nav-item ${active ? "sidebar__nav-item--active" : ""}`}
               onClick={() => navigate(item.path)}
               id={`nav-${item.id}`}
               title={collapsed ? item.label : undefined}
@@ -197,11 +303,17 @@ function SidebarInner() {
           className="sidebar__nav-item sidebar__nav-item--logout"
           onClick={handleLogout}
           id="nav-logout"
-          title={collapsed ? 'Log Out' : undefined}
+          title={collapsed ? "Log Out" : undefined}
         >
           <span className="sidebar__nav-icon">
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-              <path d="M7 17H4a2 2 0 01-2-2V5a2 2 0 012-2h3M13 14l4-4-4-4M17 10H7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <path
+                d="M7 17H4a2 2 0 01-2-2V5a2 2 0 012-2h3M13 14l4-4-4-4M17 10H7"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
             </svg>
           </span>
           <span className="sidebar__nav-label">Log Out</span>
@@ -210,17 +322,23 @@ function SidebarInner() {
         <button
           className="sidebar__toggle"
           onClick={toggleCollapsed}
-          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
           <svg
             width="18"
             height="18"
             viewBox="0 0 18 18"
             fill="none"
-            className={`sidebar__toggle-icon${collapsed ? ' sidebar__toggle-icon--flipped' : ''}`}
+            className={`sidebar__toggle-icon${collapsed ? " sidebar__toggle-icon--flipped" : ""}`}
           >
-            <path d="M11 4l-5 5 5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            <path
+              d="M11 4l-5 5 5 5"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
           </svg>
         </button>
       </div>
@@ -229,11 +347,5 @@ function SidebarInner() {
 }
 
 export default function Sidebar() {
-  const [collapsed, setCollapsed] = useState(false);
-
-  return (
-    <SidebarContext.Provider value={{ collapsed, toggleCollapsed: () => setCollapsed((c) => !c) }}>
-      <SidebarInner />
-    </SidebarContext.Provider>
-  );
+  return <SidebarInner />;
 }

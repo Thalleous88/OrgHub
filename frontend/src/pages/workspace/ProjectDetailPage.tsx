@@ -22,6 +22,7 @@ import {
   useDivisions,
   useOrganizations,
   useProjects,
+  useDeleteProject,
   useProjectMembers,
 } from '../../hooks/queries/useWorkspace';
 import { useTasks } from '../../hooks/queries/useTasks';
@@ -29,6 +30,7 @@ import { useScopeCalendar } from '../../hooks/queries/useCalendar';
 import { useScopeDocuments } from '../../hooks/queries/useDocuments';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { useAuth } from '../../context/AuthContext';
+import { getApiErrorMessage } from '../../lib/apiError';
 import type { Task } from '../../types/api';
 import '../../components/workspace/WorkspaceCards.css';
 
@@ -39,7 +41,7 @@ export default function ProjectDetailPage() {
   const projectId = Number(projectIdParam);
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { canManageProject, isProjectMember, projectRole } = useWorkspace();
+  const { canManageProject, isCoreBoard, isDivisionHead, isProjectMember, projectRole } = useWorkspace();
 
   const { data: projects, isLoading: projsLoading } = useProjects();
   const { data: divisions } = useDivisions();
@@ -65,6 +67,7 @@ export default function ProjectDetailPage() {
   const [createEventOpen, setCreateEventOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const deleteProjectMut = useDeleteProject();
 
   const projectTasks = useMemo(
     () => (tasks ?? []).filter((t) => t.project === projectId),
@@ -74,7 +77,23 @@ export default function ProjectDetailPage() {
   const role = projectRole(projectId);
   const canManage =
     organization && division ? canManageProject(organization.id, division.id, projectId) : false;
+  const canDeleteProject =
+    organization && division ? isCoreBoard(organization.id) || isDivisionHead(division.id) : false;
   const isMember = isProjectMember(projectId);
+
+  const handleDeleteProject = async () => {
+    if (!project || !division) return;
+    const typedName = window.prompt(
+      `Type "${project.name}" to permanently delete this project and everything inside it.`,
+    );
+    if (typedName !== project.name) return;
+    try {
+      await deleteProjectMut.mutateAsync(project.id);
+      navigate(`/workspace/divisions/${division.id}`);
+    } catch (err) {
+      window.alert(getApiErrorMessage(err, 'Could not delete project.'));
+    }
+  };
 
   const { data: calendarEvents = [] } = useScopeCalendar(
     'projects',
@@ -132,6 +151,15 @@ export default function ProjectDetailPage() {
             {canManage && (
               <Button variant="secondary" onClick={() => setInviteOpen(true)}>
                 Invite member
+              </Button>
+            )}
+            {canDeleteProject && (
+              <Button
+                variant="danger"
+                loading={deleteProjectMut.isPending}
+                onClick={handleDeleteProject}
+              >
+                Delete project
               </Button>
             )}
             {isMember && (

@@ -7,10 +7,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 2rem;
+  padding: 0 var(--space-xl);
   background: var(--surface-glass);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--border-primary);
   position: sticky;
   top: 0;
@@ -29,6 +27,7 @@
   top: 50%;
   transform: translateY(-50%);
   pointer-events: none;
+  color: var(--text-muted);
 }
 
 .topbar__search-input {
@@ -39,7 +38,7 @@
   border: 1px solid var(--border-secondary);
   color: var(--text-primary);
   font-size: 0.88rem;
-  transition: all var(--transition-fast);
+  transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
 }
 
 .topbar__search-input::placeholder {
@@ -71,12 +70,13 @@
   border: none;
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
 }
 
 .topbar__action-btn:hover {
   background: var(--surface-glass-light);
   color: var(--text-primary);
+  transform: translateY(-1px);
 }
 
 .topbar__badge {
@@ -117,7 +117,7 @@
   width: 34px;
   height: 34px;
   border-radius: var(--radius-sm);
-  background: linear-gradient(135deg, var(--teal-600), var(--teal-500));
+  background: var(--teal-600);
   color: white;
   font-size: 0.75rem;
   font-weight: 700;
@@ -146,7 +146,7 @@
 /* --- Responsive --- */
 @media (max-width: 768px) {
   .topbar {
-    padding: 0 1rem;
+    padding: 0 var(--space-md);
   }
 
   .topbar__search {

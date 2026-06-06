@@ -24,6 +24,7 @@ import {
   useDivisions,
   useOrganizations,
   useProjects,
+  useDeleteDivision,
   useDivisionMembers,
 } from '../../hooks/queries/useWorkspace';
 import { useTasks } from '../../hooks/queries/useTasks';
@@ -32,6 +33,7 @@ import { useScopeDocuments } from '../../hooks/queries/useDocuments';
 import { useDashboard } from '../../hooks/queries/useDashboard';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { useAuth } from '../../context/AuthContext';
+import { getApiErrorMessage } from '../../lib/apiError';
 import type { Task } from '../../types/api';
 import '../../components/workspace/WorkspaceCards.css';
 
@@ -42,7 +44,7 @@ export default function DivisionDetailPage() {
   const divisionId = Number(divisionIdParam);
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { canManageDivision, isDivisionMember, divisionRole, memberships } = useWorkspace();
+  const { canManageDivision, isCoreBoard, isDivisionMember, divisionRole, memberships } = useWorkspace();
 
   const { data: divisions, isLoading: divsLoading } = useDivisions();
   const { data: organizations } = useOrganizations();
@@ -66,6 +68,7 @@ export default function DivisionDetailPage() {
   const [createEventOpen, setCreateEventOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const deleteDivisionMut = useDeleteDivision();
 
   const divisionProjects = useMemo(
     () => (projects ?? []).filter((p) => p.division === divisionId),
@@ -86,8 +89,23 @@ export default function DivisionDetailPage() {
   );
 
   const canManage = organization ? canManageDivision(organization.id, divisionId) : false;
+  const canDeleteDivision = organization ? isCoreBoard(organization.id) : false;
   const isMember = isDivisionMember(divisionId);
   const role = divisionRole(divisionId);
+
+  const handleDeleteDivision = async () => {
+    if (!division || !organization) return;
+    const typedName = window.prompt(
+      `Type "${division.name}" to permanently delete this division and everything inside it.`,
+    );
+    if (typedName !== division.name) return;
+    try {
+      await deleteDivisionMut.mutateAsync(division.id);
+      navigate(`/workspace/orgs/${organization.id}`);
+    } catch (err) {
+      window.alert(getApiErrorMessage(err, 'Could not delete division.'));
+    }
+  };
 
   const { data: calendarEvents = [] } = useScopeCalendar(
     'divisions',
@@ -144,6 +162,15 @@ export default function DivisionDetailPage() {
             {canManage && (
               <Button variant="secondary" onClick={() => setInviteOpen(true)}>
                 Invite member
+              </Button>
+            )}
+            {canDeleteDivision && (
+              <Button
+                variant="danger"
+                loading={deleteDivisionMut.isPending}
+                onClick={handleDeleteDivision}
+              >
+                Delete division
               </Button>
             )}
             {canManage && (

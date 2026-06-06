@@ -3,6 +3,7 @@ import { Drawer, Button, Field, Input, Textarea, Select, Badge, useToast } from 
 import type { Task, TaskStatus } from '../../types/api';
 import { useUpdateTask, useDeleteTask } from '../../hooks/queries/useTasks';
 import { getApiErrorMessage } from '../../lib/apiError';
+import TaskDueInput from './TaskDueInput';
 import './TaskDetailDrawer.css';
 
 interface Props {
@@ -149,12 +150,7 @@ export default function TaskDetailDrawer({ open, task, currentUserId, onClose }:
               </Select>
             </Field>
             <Field label="Due">
-              <Input
-                type="datetime-local"
-                value={dueAt}
-                onChange={(e) => setDueAt(e.target.value)}
-                disabled={!canEdit}
-              />
+              <TaskDueInput value={dueAt} onChange={setDueAt} disabled={!canEdit} />
             </Field>
           </div>
 

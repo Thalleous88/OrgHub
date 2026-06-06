@@ -34,8 +34,8 @@ function chipClass(type: EventType): string {
 
 function getEventColors(type: EventType): { bg: string; border: string; color: string } {
   if (type === 'MEETING') return { bg: 'var(--teal-glow)', border: 'var(--border-accent)', color: 'var(--teal-400)' };
-  if (type === 'MILESTONE') return { bg: 'rgba(167, 139, 250, 0.15)', border: 'rgba(167, 139, 250, 0.3)', color: '#c4b5fd' };
-  return { bg: 'rgba(251, 191, 36, 0.18)', border: 'rgba(251, 191, 36, 0.3)', color: 'var(--amber-400)' };
+  if (type === 'MILESTONE') return { bg: 'var(--violet-glow)', border: 'oklch(74% 0.13 300 / 0.3)', color: 'var(--violet-400)' };
+  return { bg: 'oklch(84% 0.16 82 / 0.16)', border: 'oklch(84% 0.16 82 / 0.3)', color: 'var(--amber-400)' };
 }
 
 export default function CalendarPage() {

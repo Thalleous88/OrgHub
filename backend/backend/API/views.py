@@ -28,10 +28,14 @@ from .permissions import (
     can_access_repository,
     can_access_resource_document,
     can_access_task,
-    can_manage_announcement,
-    can_manage_calendar_event,
+    can_delete_division,
+    can_delete_project,
     can_delete_resource_document,
     can_delete_task,
+    can_manage_announcement,
+    can_manage_calendar_event,
+    can_manage_division,
+    can_manage_project_members,
 )
 from .serializers import (
     AnnouncementSerializer,
@@ -418,6 +422,22 @@ class DivisionListCreateView(generics.ListCreateAPIView):
         ).distinct()
 
 
+class DivisionDetailView(generics.RetrieveDestroyAPIView):
+    serializer_class = DivisionSerializer
+    queryset = Division.objects.select_related("organization")
+
+    def get_object(self):
+        division = super().get_object()
+        if not can_manage_division(self.request.user, division):
+            raise PermissionDenied("You do not have access to this division.")
+        return division
+
+    def perform_destroy(self, instance):
+        if not can_delete_division(self.request.user, instance):
+            raise PermissionDenied("Only Core Board members can delete divisions.")
+        instance.delete()
+
+
 class ProjectListCreateView(generics.ListCreateAPIView):
     serializer_class = ProjectSerializer
 
@@ -435,6 +455,24 @@ class ProjectListCreateView(generics.ListCreateAPIView):
                 division__organization__memberships__is_active=True,
             )
         ).distinct()
+
+
+class ProjectDetailView(generics.RetrieveDestroyAPIView):
+    serializer_class = ProjectSerializer
+    queryset = Project.objects.select_related("division__organization")
+
+    def get_object(self):
+        project = super().get_object()
+        if not can_manage_project_members(self.request.user, project):
+            raise PermissionDenied("You do not have access to this project.")
+        return project
+
+    def perform_destroy(self, instance):
+        if not can_delete_project(self.request.user, instance):
+            raise PermissionDenied(
+                "Only Core Board members or Division Heads can delete projects."
+            )
+        instance.delete()
 
 
 class ScopeInvitationCreateView(APIView):

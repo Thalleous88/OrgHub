@@ -6,6 +6,8 @@ import { Button } from '../components/ui';
 import { getApiErrorMessage } from '../lib/apiError';
 import './LoginPage.css';
 
+const orgHubLogo = new URL('../assets/OrgHub Logo.png', import.meta.url).href;
+
 export default function InvitationAcceptPage() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
@@ -38,16 +40,7 @@ export default function InvitationAcceptPage() {
         <div className="login-hero__content animate-fade-in-up">
           <div className="login-hero__logo">
             <div className="login-hero__logo-icon">
-              <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-                <rect width="28" height="28" rx="6" fill="url(#inv-logo-grad)" />
-                <path d="M8 10h12M8 14h8M8 18h10" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
-                <defs>
-                  <linearGradient id="inv-logo-grad" x1="0" y1="0" x2="28" y2="28">
-                    <stop stopColor="#14b8a6" />
-                    <stop offset="1" stopColor="#10b981" />
-                  </linearGradient>
-                </defs>
-              </svg>
+              <img className="login-hero__logo-img" src={orgHubLogo} alt="OrgHub" />
             </div>
             <span className="login-hero__logo-text">OrgHub</span>
           </div>
@@ -85,8 +78,8 @@ export default function InvitationAcceptPage() {
           {error && (
             <div className="login-form__error animate-fade-in" style={{ marginBottom: '1rem' }}>
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <circle cx="8" cy="8" r="7" stroke="#f87171" strokeWidth="1.5"/>
-                <path d="M8 5v3.5M8 10.5v.5" stroke="#f87171" strokeWidth="1.5" strokeLinecap="round"/>
+                <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5"/>
+                <path d="M8 5v3.5M8 10.5v.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
               </svg>
               <span>{error}</span>
             </div>

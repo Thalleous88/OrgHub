@@ -66,6 +66,17 @@ def can_manage_project_members(user, project):
     )
 
 
+def can_delete_division(user, division):
+    return is_core_board(user, division.organization)
+
+
+def can_delete_project(user, project):
+    return is_core_board(user, project.division.organization) or is_division_head(
+        user,
+        project.division,
+    )
+
+
 def can_access_resource_document(user, document):
     if document.organization_id:
         return is_organization_member(user, document.organization)

@@ -3,7 +3,7 @@
    ============================================================ */
 
 .meeting-card {
-  padding: 1.5rem;
+  padding: var(--space-lg);
   display: flex;
   flex-direction: column;
 }
@@ -12,10 +12,10 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 1rem;
+  font-size: var(--text-md);
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: 1.25rem;
+  margin-bottom: var(--space-md);
 }
 
 .meeting-card__empty {
@@ -30,21 +30,22 @@
 .meeting-card__list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--space-sm);
 }
 
 /* Meeting Item */
 .meeting-item {
   padding: 14px;
   border-radius: var(--radius-md);
-  background: var(--surface-glass-light);
+  background: var(--surface-secondary);
   border: 1px solid var(--border-secondary);
-  transition: all var(--transition-fast);
+  transition: background var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
 }
 
 .meeting-item:hover {
   border-color: var(--border-primary);
-  background: var(--surface-secondary);
+  background: var(--surface-hover);
+  transform: translateY(-1px);
 }
 
 .meeting-item--live {
@@ -60,7 +61,7 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 0.65rem;
+  font-size: var(--text-xs);
   font-weight: 700;
   letter-spacing: 0.08em;
   color: var(--teal-400);
@@ -72,7 +73,7 @@
   height: 6px;
   border-radius: 50%;
   background: var(--teal-400);
-  animation: live-pulse 1.5s ease-in-out infinite;
+  animation: live-pulse 1.5s var(--ease-in-out) infinite;
 }
 
 .meeting-item__header {
@@ -89,7 +90,7 @@
 }
 
 .meeting-item__title {
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -98,7 +99,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 0.78rem;
+  font-size: var(--text-xs);
   color: var(--text-muted);
   padding-left: 24px;
 }
@@ -108,7 +109,7 @@
 }
 
 .meeting-item__desc {
-  font-size: 0.8rem;
+  font-size: var(--text-xs);
   color: var(--text-muted);
   margin-top: 6px;
   padding-left: 24px;

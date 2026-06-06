@@ -16,6 +16,13 @@ export async function createDivision(input: {
   });
 }
 
+export async function deleteDivision(divisionId: number): Promise<null> {
+  return request<null>(`/divisions/${divisionId}/`, {
+    method: 'DELETE',
+    expectNoContent: true,
+  });
+}
+
 export async function listDivisionMembers(divisionId: number): Promise<MemberItem[]> {
   return request<MemberItem[]>(`/divisions/${divisionId}/members/`);
 }

@@ -3,6 +3,7 @@ import { Modal, Field, Input, Textarea, Select, Button, useToast } from '../ui';
 import { useCreateScopeCalendarEvent } from '../../hooks/queries/useCalendar';
 import { useDivisionMembers, useProjectMembers, useOrganizationMembers, useDivisions } from '../../hooks/queries/useWorkspace';
 import { getApiErrorMessage } from '../../lib/apiError';
+import TaskDueInput from '../tasks/TaskDueInput';
 import type { EventType, Scope } from '../../types/api';
 
 interface Props {
@@ -145,10 +146,21 @@ export default function CreateEventModal({ open, onClose, scope, scopeId, scopeN
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <Field label="Starts">
-            <Input type="datetime-local" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} required />
+            <TaskDueInput
+              value={startsAt}
+              onChange={setStartsAt}
+              required
+              dateLabel="Start date"
+              timeLabel="Start time"
+            />
           </Field>
           <Field label="Ends">
-            <Input type="datetime-local" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} />
+            <TaskDueInput
+              value={endsAt}
+              onChange={setEndsAt}
+              dateLabel="End date"
+              timeLabel="End time"
+            />
           </Field>
         </div>
 

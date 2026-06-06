@@ -1,7 +1,7 @@
 .cal-page {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--space-md);
 }
 
 .cal-toolbar {
@@ -9,10 +9,8 @@
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-  padding: 12px;
-  background: var(--surface-glass);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  padding: var(--space-sm);
+  background: var(--surface-panel);
   border: 1px solid var(--border-primary);
   border-radius: var(--radius-lg);
 }
@@ -34,18 +32,19 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all var(--transition-fast);
+  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
 }
 
 .cal-toolbar__navbtn:hover {
   background: var(--teal-glow);
   color: var(--teal-400);
   border-color: var(--border-accent);
+  transform: translateY(-1px);
 }
 
 .cal-toolbar__title {
   font-family: var(--font-heading);
-  font-size: 1.05rem;
+  font-size: var(--text-lg);
   font-weight: 700;
   color: var(--text-primary);
   margin-left: 6px;
@@ -68,11 +67,13 @@
   background: transparent;
   border: none;
   color: var(--text-secondary);
-  font-size: 0.78rem;
+  font-size: var(--text-xs);
   font-weight: 600;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
 }
+
+.cal-toolbar__viewbtn:hover { transform: translateY(-1px); }
 
 .cal-toolbar__viewbtn--active {
   background: var(--teal-glow);
@@ -82,7 +83,7 @@
 .cal-month {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  background: var(--surface-glass);
+  background: var(--surface-panel);
   border: 1px solid var(--border-primary);
   border-radius: var(--radius-lg);
   overflow: hidden;
@@ -90,13 +91,13 @@
 
 .cal-month__dayname {
   padding: 10px 12px;
-  font-size: 0.7rem;
+  font-size: var(--text-xs);
   font-weight: 700;
   letter-spacing: 0.06em;
   color: var(--text-muted);
   text-transform: uppercase;
   border-bottom: 1px solid var(--border-secondary);
-  background: var(--surface-glass-light);
+  background: var(--surface-secondary);
 }
 
 .cal-month__cell {
@@ -131,7 +132,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.78rem;
+  font-size: var(--text-xs);
   font-weight: 600;
   color: var(--text-secondary);
 }
@@ -144,7 +145,7 @@
 }
 
 .cal-event-chip {
-  font-size: 0.72rem;
+  font-size: var(--text-xs);
   padding: 2px 6px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-secondary);
@@ -152,7 +153,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   cursor: pointer;
-  background: var(--surface-glass);
+  background: var(--surface-secondary);
 }
 
 .cal-event-chip--meeting {
@@ -162,19 +163,19 @@
 }
 
 .cal-event-chip--event {
-  background: rgba(251, 191, 36, 0.18);
+  background: oklch(84% 0.16 82 / 0.16);
   color: var(--amber-400);
-  border-color: rgba(251, 191, 36, 0.3);
+  border-color: oklch(84% 0.16 82 / 0.3);
 }
 
 .cal-event-chip--milestone {
-  background: rgba(167, 139, 250, 0.15);
-  color: #c4b5fd;
-  border-color: rgba(167, 139, 250, 0.3);
+  background: var(--violet-glow);
+  color: var(--violet-400);
+  border-color: oklch(74% 0.13 300 / 0.3);
 }
 
 .cal-month__more {
-  font-size: 0.7rem;
+  font-size: var(--text-xs);
   color: var(--text-muted);
   padding-left: 4px;
 }
@@ -182,7 +183,7 @@
 .cal-week {
   display: grid;
   grid-template-columns: 60px repeat(7, 1fr);
-  background: var(--surface-glass);
+  background: var(--surface-panel);
   border: 1px solid var(--border-primary);
   border-radius: var(--radius-lg);
   overflow: hidden;
@@ -192,7 +193,7 @@
 .cal-day {
   display: grid;
   grid-template-columns: 60px 1fr;
-  background: var(--surface-glass);
+  background: var(--surface-panel);
   border: 1px solid var(--border-primary);
   border-radius: var(--radius-lg);
   overflow: hidden;
@@ -203,10 +204,10 @@
 .cal-day__hour {
   padding: 6px;
   border-bottom: 1px solid var(--border-secondary);
-  font-size: 0.7rem;
+  font-size: var(--text-xs);
   color: var(--text-muted);
   text-align: right;
-  background: var(--surface-glass-light);
+  background: var(--surface-secondary);
   height: 40px;
 }
 
@@ -227,11 +228,11 @@
 .cal-day__col-head {
   padding: 8px;
   text-align: center;
-  font-size: 0.78rem;
+  font-size: var(--text-xs);
   font-weight: 700;
   color: var(--text-secondary);
   border-bottom: 1px solid var(--border-secondary);
-  background: var(--surface-glass-light);
+  background: var(--surface-secondary);
 }
 
 .cal-week__col-head--today,

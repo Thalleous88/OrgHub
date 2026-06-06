@@ -1,4 +1,4 @@
-from django.http import FileResponse
+from django.http import FileResponse, HttpResponseRedirect
 from django.db.models import Q
 from rest_framework import generics, permissions
 from rest_framework.exceptions import PermissionDenied
@@ -529,6 +529,8 @@ class ResourceDocumentDownloadView(APIView):
         )
         if not can_access_resource_document(request.user, document):
             raise PermissionDenied("You do not have access to this document.")
+        if getattr(document.file.storage, "redirect_downloads", False):
+            return HttpResponseRedirect(document.file.url)
         return FileResponse(document.file.open("rb"), as_attachment=True)
 
 

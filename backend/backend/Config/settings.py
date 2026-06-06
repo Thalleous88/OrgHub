@@ -103,21 +103,20 @@ WSGI_APPLICATION = "Config.wsgi.application"
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 DATABASES = {
-    "default": {
-        **dj_database_url.config(
-            conn_max_age=600,
-            conn_health_checks=True,
-            ssl_require=not DEBUG,
-        ),
-        "TEST": {
-            "NAME": os.getenv("TEST_DATABASE_NAME", "test_orghub"),
-        },
-    }
+    "default": dj_database_url.config(
+        conn_max_age=600,
+        conn_health_checks=True,
+        ssl_require=not DEBUG,
+    )
 }
 
-DATABASES["default"].setdefault("OPTIONS", {})["options"] = (
-    f"-c search_path={os.getenv('DATABASE_SCHEMA', 'public')}"
-)
+if DATABASES["default"]["ENGINE"] == "django.db.backends.postgresql":
+    DATABASES["default"]["TEST"] = {
+        "NAME": os.getenv("TEST_DATABASE_NAME", "test_orghub"),
+    }
+    DATABASES["default"].setdefault("OPTIONS", {})["options"] = (
+        f"-c search_path={os.getenv('DATABASE_SCHEMA', 'public')}"
+    )
 
 
 # Password validation
@@ -157,6 +156,28 @@ USE_TZ = True
 STATIC_URL = "static/"
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+SUPABASE_STORAGE_BUCKET = os.getenv("SUPABASE_STORAGE_BUCKET", "orghub-documents")
+SUPABASE_STORAGE_DIRECT_URL = os.getenv("SUPABASE_STORAGE_DIRECT_URL", "")
+SUPABASE_STORAGE_FUNCTION_URL = os.getenv("SUPABASE_STORAGE_FUNCTION_URL", "")
+SUPABASE_STORAGE_FUNCTION_SECRET = os.getenv("SUPABASE_STORAGE_FUNCTION_SECRET", "")
+
+STORAGES = {
+    "default": {
+        "BACKEND": (
+            "API.storage.SupabaseStorage"
+            if (
+                SUPABASE_STORAGE_DIRECT_URL
+                and SUPABASE_STORAGE_FUNCTION_URL
+                and SUPABASE_STORAGE_FUNCTION_SECRET
+            )
+            else "django.core.files.storage.FileSystemStorage"
+        ),
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

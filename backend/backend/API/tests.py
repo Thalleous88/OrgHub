@@ -31,6 +31,14 @@ from .models import (
 
 User = get_user_model()
 TEST_MEDIA_ROOT = tempfile.mkdtemp()
+TEST_STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
 
 
 def tearDownModule():
@@ -434,7 +442,7 @@ class MembershipAPITests(APITestCase):
         )
 
 
-@override_settings(MEDIA_ROOT=TEST_MEDIA_ROOT)
+@override_settings(MEDIA_ROOT=TEST_MEDIA_ROOT, STORAGES=TEST_STORAGES)
 class ResourceDocumentAPITests(APITestCase):
     def setUp(self):
         self.core_user = User.objects.create_user(
@@ -1149,7 +1157,7 @@ class NotificationAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
 
-@override_settings(MEDIA_ROOT=TEST_MEDIA_ROOT)
+@override_settings(MEDIA_ROOT=TEST_MEDIA_ROOT, STORAGES=TEST_STORAGES)
 class DashboardAPITests(APITestCase):
     def setUp(self):
         self.core_user = User.objects.create_user(

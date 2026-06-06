@@ -396,6 +396,7 @@ function OrganizationSettings() {
           scope="organizations"
           scopeId={inviteOrganization.id}
           scopeName={inviteOrganization.name}
+          allowScopeSelection
         />
       )}
 

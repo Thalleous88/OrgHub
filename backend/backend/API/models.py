@@ -3,7 +3,11 @@ from pathlib import Path
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.core.files.storage import default_storage
 from django.db import models
+from django.db.models.signals import pre_delete
+from django.dispatch import receiver
+from django.utils.text import get_valid_filename
 from django.utils import timezone
 
 
@@ -13,7 +17,11 @@ MAX_RESOURCE_FILE_SIZE = 100 * 1024 * 1024
 
 def resource_document_upload_path(instance, filename):
     scope = instance.repository_scope
-    return f"resources/{scope}/{instance.repository_id}/{filename}"
+    safe_filename = get_valid_filename(Path(filename).name)
+    return (
+        f"resources/{scope}/{instance.repository_id}/"
+        f"{uuid.uuid4().hex}/{safe_filename}"
+    )
 
 
 def validate_resource_file(file):
@@ -423,6 +431,12 @@ class ResourceDocument(models.Model):
 
     def __str__(self):
         return self.title
+
+
+@receiver(pre_delete, sender=ResourceDocument)
+def delete_resource_document_file(sender, instance, **kwargs):
+    if instance.file and instance.file.name:
+        default_storage.delete(instance.file.name)
 
 
 class Announcement(models.Model):

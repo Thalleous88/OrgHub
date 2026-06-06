@@ -15,6 +15,13 @@ export async function createOrganization(input: {
   });
 }
 
+export async function leaveOrganization(organizationId: number): Promise<void> {
+  return request<void>(`/organizations/${organizationId}/leave/`, {
+    method: 'POST',
+    expectNoContent: true,
+  });
+}
+
 export async function listOrgMembers(organizationId: number): Promise<MemberItem[]> {
   return request<MemberItem[]>(`/organizations/${organizationId}/members/`);
 }

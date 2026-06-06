@@ -1,5 +1,6 @@
 from django.contrib.auth import authenticate, get_user_model
 from django.db import transaction
+from django.urls import reverse
 from rest_framework import serializers
 
 from .models import (
@@ -16,6 +17,7 @@ from .models import (
     ProjectMembership,
     ResourceDocument,
     Task,
+    validate_resource_file,
 )
 from .permissions import (
     can_assign_task,
@@ -365,7 +367,13 @@ class ProjectMembershipSerializer(serializers.ModelSerializer):
         fields = ["id", "user_id", "email", "full_name", "role", "is_active", "joined_at"]
 
 
+class ResourceFileField(serializers.FileField):
+    def to_representation(self, value):
+        return value.name if value else None
+
+
 class ResourceDocumentSerializer(serializers.ModelSerializer):
+    file = ResourceFileField(validators=[validate_resource_file])
     file_url = serializers.SerializerMethodField()
     repository_scope = serializers.CharField(read_only=True)
     repository_id = serializers.IntegerField(read_only=True)
@@ -407,9 +415,8 @@ class ResourceDocumentSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         if not obj.file:
             return None
-        if request is None:
-            return obj.file.url
-        return request.build_absolute_uri(obj.file.url)
+        url = reverse("document_download", kwargs={"pk": obj.pk})
+        return request.build_absolute_uri(url) if request else url
 
     def validate(self, attrs):
         scope = self.context.get("scope")

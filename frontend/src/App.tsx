@@ -2,10 +2,10 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import type { ReactNode } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { WorkspaceProvider } from './context/WorkspaceContext';
-import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
-import DashboardPage from './pages/DashboardPage';
-import InvitationAcceptPage from './pages/InvitationAcceptPage';
+import LoginPage from './pages/auth/LoginPage';
+import RegisterPage from './pages/auth/RegisterPage';
+import InvitationAcceptPage from './pages/auth/InvitationAcceptPage';
+import DashboardPage from './pages/dashboard/DashboardPage';
 import WorkspaceLandingPage from './pages/workspace/WorkspaceLandingPage';
 import OrganizationDetailPage from './pages/workspace/OrganizationDetailPage';
 import DivisionDetailPage from './pages/workspace/DivisionDetailPage';

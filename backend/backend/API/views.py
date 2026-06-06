@@ -1,4 +1,5 @@
-from django.http import FileResponse
+from django.http import FileResponse, HttpResponseRedirect
+from django.db import transaction
 from django.db.models import Q
 from rest_framework import generics, permissions
 from rest_framework.exceptions import PermissionDenied
@@ -27,10 +28,14 @@ from .permissions import (
     can_access_repository,
     can_access_resource_document,
     can_access_task,
-    can_manage_announcement,
-    can_manage_calendar_event,
+    can_delete_division,
+    can_delete_project,
     can_delete_resource_document,
     can_delete_task,
+    can_manage_announcement,
+    can_manage_calendar_event,
+    can_manage_division,
+    can_manage_project_members,
 )
 from .serializers import (
     AnnouncementSerializer,
@@ -349,6 +354,60 @@ class OrganizationListCreateView(generics.ListCreateAPIView):
         ).distinct()
 
 
+class OrganizationLeaveView(APIView):
+    def post(self, request, pk):
+        organization = generics.get_object_or_404(Organization, pk=pk)
+
+        with transaction.atomic():
+            membership = (
+                OrganizationMembership.objects.select_for_update()
+                .filter(
+                    organization=organization,
+                    user=request.user,
+                    is_active=True,
+                )
+                .first()
+            )
+            if membership is None:
+                raise PermissionDenied("You are not an active member of this organization.")
+
+            if membership.role == OrganizationMembership.Role.CORE_BOARD:
+                active_core_board_ids = list(
+                    OrganizationMembership.objects.select_for_update()
+                    .filter(
+                        organization=organization,
+                        role=OrganizationMembership.Role.CORE_BOARD,
+                        is_active=True,
+                    )
+                    .values_list("pk", flat=True)
+                )
+                if len(active_core_board_ids) <= 1:
+                    return Response(
+                        {
+                            "detail": (
+                                "You are the last Core Board member. "
+                                "Invite or promote another Core Board member before leaving."
+                            )
+                        },
+                        status=400,
+                    )
+
+            ProjectMembership.objects.filter(
+                user=request.user,
+                project__division__organization=organization,
+                is_active=True,
+            ).update(is_active=False)
+            DivisionMembership.objects.filter(
+                user=request.user,
+                division__organization=organization,
+                is_active=True,
+            ).update(is_active=False)
+            membership.is_active = False
+            membership.save(update_fields=["is_active"])
+
+        return Response(status=204)
+
+
 class DivisionListCreateView(generics.ListCreateAPIView):
     serializer_class = DivisionSerializer
 
@@ -361,6 +420,22 @@ class DivisionListCreateView(generics.ListCreateAPIView):
                 organization__memberships__is_active=True,
             )
         ).distinct()
+
+
+class DivisionDetailView(generics.RetrieveDestroyAPIView):
+    serializer_class = DivisionSerializer
+    queryset = Division.objects.select_related("organization")
+
+    def get_object(self):
+        division = super().get_object()
+        if not can_manage_division(self.request.user, division):
+            raise PermissionDenied("You do not have access to this division.")
+        return division
+
+    def perform_destroy(self, instance):
+        if not can_delete_division(self.request.user, instance):
+            raise PermissionDenied("Only Core Board members can delete divisions.")
+        instance.delete()
 
 
 class ProjectListCreateView(generics.ListCreateAPIView):
@@ -380,6 +455,24 @@ class ProjectListCreateView(generics.ListCreateAPIView):
                 division__organization__memberships__is_active=True,
             )
         ).distinct()
+
+
+class ProjectDetailView(generics.RetrieveDestroyAPIView):
+    serializer_class = ProjectSerializer
+    queryset = Project.objects.select_related("division__organization")
+
+    def get_object(self):
+        project = super().get_object()
+        if not can_manage_project_members(self.request.user, project):
+            raise PermissionDenied("You do not have access to this project.")
+        return project
+
+    def perform_destroy(self, instance):
+        if not can_delete_project(self.request.user, instance):
+            raise PermissionDenied(
+                "Only Core Board members or Division Heads can delete projects."
+            )
+        instance.delete()
 
 
 class ScopeInvitationCreateView(APIView):
@@ -529,6 +622,8 @@ class ResourceDocumentDownloadView(APIView):
         )
         if not can_access_resource_document(request.user, document):
             raise PermissionDenied("You do not have access to this document.")
+        if getattr(document.file.storage, "redirect_downloads", False):
+            return HttpResponseRedirect(document.file.url)
         return FileResponse(document.file.open("rb"), as_attachment=True)
 
 

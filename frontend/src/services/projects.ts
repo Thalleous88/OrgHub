@@ -16,6 +16,13 @@ export async function createProject(input: {
   });
 }
 
+export async function deleteProject(projectId: number): Promise<null> {
+  return request<null>(`/projects/${projectId}/`, {
+    method: 'DELETE',
+    expectNoContent: true,
+  });
+}
+
 export async function listProjectMembers(projectId: number): Promise<MemberItem[]> {
   return request<MemberItem[]>(`/projects/${projectId}/members/`);
 }

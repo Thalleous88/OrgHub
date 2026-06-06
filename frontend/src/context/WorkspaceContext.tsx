@@ -1,15 +1,26 @@
 
-import { createContext, useContext, useMemo, type ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
 import { useAuth } from './AuthContext';
 import type {
   DivisionRole,
   MembershipsBundle,
+  OrgMembershipSummary,
   OrgRole,
   ProjectRole,
 } from '../types/api';
 
 interface WorkspaceContextValue {
   memberships: MembershipsBundle;
+  currentOrganizationId: number | null;
+  currentOrganization: OrgMembershipSummary | null;
+  setCurrentOrganization: (organizationId: number) => void;
   isCoreBoard: (organizationId: number) => boolean;
   isOrgMember: (organizationId: number) => boolean;
   organizationRole: (organizationId: number) => OrgRole | null;
@@ -32,6 +43,26 @@ const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const memberships = user?.memberships ?? empty;
+  const storageKey = user ? `orghub_current_organization_${user.id}` : null;
+  const [selectedOrganizationId, setSelectedOrganizationId] = useState<number | null>(() => {
+    if (!user) return null;
+    const stored = localStorage.getItem(`orghub_current_organization_${user.id}`);
+    return stored ? Number(stored) : memberships.organizations[0]?.id ?? null;
+  });
+  const currentOrganizationId = memberships.organizations.some(
+    (organization) => organization.id === selectedOrganizationId,
+  )
+    ? selectedOrganizationId
+    : memberships.organizations[0]?.id ?? null;
+
+  useEffect(() => {
+    if (!storageKey) return;
+    if (currentOrganizationId === null) {
+      localStorage.removeItem(storageKey);
+    } else {
+      localStorage.setItem(storageKey, String(currentOrganizationId));
+    }
+  }, [currentOrganizationId, storageKey]);
 
   const value = useMemo<WorkspaceContextValue>(() => {
     const orgRole = (organizationId: number): OrgRole | null =>
@@ -43,6 +74,11 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
     return {
       memberships,
+      currentOrganizationId,
+      currentOrganization:
+        memberships.organizations.find((organization) => organization.id === currentOrganizationId) ??
+        null,
+      setCurrentOrganization: setSelectedOrganizationId,
       organizationRole: orgRole,
       divisionRole: divRole,
       projectRole: projRole,
@@ -59,7 +95,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         divRole(divisionId) === 'DIVISION_HEAD' ||
         projRole(projectId) === 'PROJECT_LEAD',
     };
-  }, [memberships]);
+  }, [currentOrganizationId, memberships]);
 
   return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;
 }

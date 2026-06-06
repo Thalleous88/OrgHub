@@ -1,11 +1,11 @@
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { useDashboard } from '../hooks/queries/useDashboard';
-import { AppShell } from '../components/layout/AppShell';
-import DeadlineCard from '../components/DeadlineCard';
-import MeetingCard from '../components/MeetingCard';
-import GeneralFeed from '../components/GeneralFeed';
-import { getApiErrorMessage } from '../lib/apiError';
+import { useAuth } from '../../context/AuthContext';
+import { useDashboard } from '../../hooks/queries/useDashboard';
+import { AppShell } from '../../components/layout/AppShell';
+import DeadlineCard from '../../components/dashboard/DeadlineCard';
+import MeetingCard from '../../components/dashboard/MeetingCard';
+import GeneralFeed from '../../components/dashboard/GeneralFeed';
+import { getApiErrorMessage } from '../../lib/apiError';
 import './DashboardPage.css';
 
 export default function DashboardPage() {

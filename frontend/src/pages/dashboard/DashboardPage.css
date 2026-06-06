@@ -5,7 +5,7 @@
   align-items: center;
   justify-content: center;
   min-height: 50vh;
-  gap: 16px;
+  gap: var(--space-md);
   color: var(--text-muted);
 }
 
@@ -53,29 +53,32 @@
   font-weight: 600;
   font-size: 0.88rem;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: background var(--transition-fast), transform var(--transition-fast);
 }
 
 .dashboard-error__retry:hover {
   background: var(--teal-glow-strong);
+  transform: translateY(-1px);
 }
 
 .dashboard-greeting {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 1.5rem;
-  margin-bottom: 2rem;
+  gap: var(--space-lg);
+  margin-bottom: var(--space-xl);
+  padding-bottom: var(--space-lg);
+  border-bottom: 1px solid var(--border-secondary);
 }
 
 .dashboard-greeting__left h1 {
-  font-size: 2rem;
-  font-weight: 700;
+  font-size: var(--text-3xl);
+  font-weight: 760;
   margin-bottom: 4px;
 }
 
 .dashboard-greeting__summary {
-  font-size: 0.95rem;
+  font-size: var(--text-md);
   color: var(--text-secondary);
 }
 
@@ -89,35 +92,37 @@
   gap: 6px;
   padding: 10px 20px;
   border-radius: var(--radius-md);
-  background: linear-gradient(135deg, var(--teal-600), var(--teal-500));
-  color: white;
+  background: var(--teal-600);
+  border: 1px solid var(--teal-500);
+  color: var(--text-primary);
   font-weight: 600;
   font-size: 0.88rem;
   white-space: nowrap;
-  transition: all var(--transition-normal);
-  box-shadow: 0 2px 10px var(--teal-glow);
+  transition: background var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast);
+  box-shadow: none;
   flex-shrink: 0;
   border: none;
   cursor: pointer;
 }
 
 .dashboard-greeting__create-btn:hover {
-  background: linear-gradient(135deg, var(--teal-500), var(--emerald-500));
-  box-shadow: 0 4px 20px var(--teal-glow-strong);
+  background: var(--teal-500);
+  box-shadow: 0 8px 18px var(--teal-glow);
   transform: translateY(-1px);
 }
 
 .dashboard-widgets-row {
   display: grid;
   grid-template-columns: 1.5fr 1fr;
-  gap: 1.25rem;
-  margin-bottom: 2rem;
+  grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
+  gap: var(--space-lg);
+  margin-bottom: var(--space-lg);
 }
 
 .dashboard-bottom-row {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 1.25rem;
+  gap: var(--space-lg);
 }
 
 @media (max-width: 1024px) {

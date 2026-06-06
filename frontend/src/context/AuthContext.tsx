@@ -1,4 +1,11 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useState,
+  useEffect,
+  type ReactNode,
+} from 'react';
 import {
   login as apiLogin,
   logout as apiLogout,
@@ -15,6 +22,7 @@ interface AuthContextType {
   loginAction: (email: string, password: string) => Promise<void>;
   registerAction: (email: string, password: string) => Promise<void>;
   logoutAction: () => void;
+  refreshUser: () => Promise<CurrentUser>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -22,6 +30,12 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  const refreshUser = useCallback(async () => {
+    const userData = await getCurrentUser();
+    setUser(userData);
+    return userData;
+  }, []);
 
   // On mount, check for existing token and validate
   useEffect(() => {
@@ -44,14 +58,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginAction = async (email: string, password: string) => {
     await apiLogin(email, password);
-    const userData = await getCurrentUser();
-    setUser(userData);
+    await refreshUser();
   };
 
   const registerAction = async (email: string, password: string) => {
     await apiRegister(email, password);
-    const userData = await getCurrentUser();
-    setUser(userData);
+    await refreshUser();
   };
 
   const logoutAction = () => {
@@ -68,6 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loginAction,
         registerAction,
         logoutAction,
+        refreshUser,
       }}
     >
       {children}

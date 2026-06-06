@@ -103,7 +103,7 @@ export default function AnnouncementsList({ announcements, canManage }: Props) {
               <span>By {a.created_by_email}</span>
               {isManageable(canManage, a) && (
                 <Button
-                  variant="ghost"
+                  variant="danger"
                   size="sm"
                   loading={deleteMut.isPending && deleteMut.variables === a.id}
                   onClick={(e) => {

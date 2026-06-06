@@ -1,25 +1,25 @@
 .kanban {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-md);
   align-items: stretch;
 }
 
 .kanban__col {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 12px;
-  background: var(--surface-glass-light);
+  gap: var(--space-sm);
+  padding: var(--space-sm);
+  background: var(--surface-panel);
   border: 1px solid var(--border-secondary);
   border-radius: var(--radius-lg);
   min-height: 320px;
-  transition: all var(--transition-fast);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast);
 }
 
 .kanban__col--hover {
   border-color: var(--border-accent);
-  box-shadow: 0 0 12px var(--teal-glow);
+  box-shadow: 0 0 0 1px var(--border-accent);
 }
 
 .kanban__col-head {
@@ -30,7 +30,7 @@
 }
 
 .kanban__col-label {
-  font-size: 0.78rem;
+  font-size: var(--text-xs);
   font-weight: 700;
   letter-spacing: 0.06em;
   color: var(--text-secondary);
@@ -38,11 +38,11 @@
 }
 
 .kanban__col-count {
-  font-size: 0.7rem;
+  font-size: var(--text-xs);
   font-weight: 700;
   padding: 2px 8px;
   border-radius: var(--radius-full);
-  background: var(--surface-glass);
+  background: var(--surface-secondary);
   color: var(--text-muted);
 }
 
@@ -67,7 +67,7 @@
 }
 
 .task-card {
-  background: var(--surface-glass);
+  background: var(--surface-primary);
   border: 1px solid var(--border-primary);
   border-radius: var(--radius-md);
   padding: 12px;
@@ -75,12 +75,13 @@
   flex-direction: column;
   gap: 8px;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: border-color var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast);
 }
 
 .task-card:hover {
   border-color: var(--border-accent);
   transform: translateY(-1px);
+  background: var(--surface-panel-2);
   box-shadow: var(--shadow-sm);
 }
 
@@ -89,7 +90,7 @@
 }
 
 .task-card__title {
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
   font-weight: 600;
   color: var(--text-primary);
   line-height: 1.35;
@@ -99,7 +100,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 0.72rem;
+  font-size: var(--text-xs);
   color: var(--text-muted);
   flex-wrap: wrap;
 }

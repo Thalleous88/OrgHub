@@ -1,0 +1,43 @@
+/* Hallmark · portable tokens · OrgHub Workbench App Shell */
+:root {
+  --color-paper: oklch(13% 0.018 262);
+  --color-panel: oklch(19% 0.021 258);
+  --color-panel-2: oklch(21% 0.022 258);
+  --color-hover: oklch(28% 0.03 258);
+  --color-ink: oklch(96% 0.006 255);
+  --color-muted: oklch(62% 0.026 255);
+  --color-accent: oklch(70% 0.12 182);
+  --color-accent-strong: oklch(59% 0.115 184);
+  --color-danger: oklch(63% 0.2 27);
+  --color-warning: oklch(84% 0.16 82);
+  --color-violet: oklch(74% 0.13 300);
+  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-display: 'Outfit', system-ui, -apple-system, sans-serif;
+  --font-heading: var(--font-display);
+  --space-2xs: 0.25rem;
+  --space-xs: 0.5rem;
+  --space-sm: 0.75rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2rem;
+  --space-2xl: 3rem;
+  --text-xs: 0.72rem;
+  --text-sm: 0.84rem;
+  --text-md: 0.95rem;
+  --text-lg: 1.08rem;
+  --text-xl: 1.35rem;
+  --text-2xl: 1.7rem;
+  --text-3xl: clamp(1.85rem, 3.8vw, 2.75rem);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-fast: 140ms;
+  --dur-normal: 220ms;
+  --dur-slow: 360ms;
+  --rule-thin: 1px;
+  --radius-sm: 5px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+}

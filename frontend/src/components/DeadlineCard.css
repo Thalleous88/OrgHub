@@ -1,5 +1,5 @@
 .deadline-card {
-  padding: 1.5rem;
+  padding: var(--space-lg);
   display: flex;
   flex-direction: column;
 }
@@ -8,20 +8,20 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 1.25rem;
+  margin-bottom: var(--space-md);
 }
 
 .deadline-card__title {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 1rem;
+  font-size: var(--text-md);
   font-weight: 600;
   color: var(--text-primary);
 }
 
 .deadline-card__count {
-  font-size: 0.7rem;
+  font-size: var(--text-xs);
   font-weight: 700;
   letter-spacing: 0.06em;
   color: var(--teal-400);
@@ -53,7 +53,7 @@
   gap: 12px;
   padding: 12px;
   border-radius: var(--radius-md);
-  transition: background var(--transition-fast);
+  transition: none;
 }
 
 .deadline-item:hover {
@@ -66,7 +66,7 @@
   border-radius: 50%;
   background: var(--navy-500);
   flex-shrink: 0;
-  transition: all var(--transition-fast);
+  transition: none;
 }
 
 .deadline-item__dot--active {
@@ -83,7 +83,7 @@
 }
 
 .deadline-item__title {
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
   font-weight: 500;
   color: var(--text-primary);
   white-space: nowrap;
@@ -92,12 +92,12 @@
 }
 
 .deadline-item__meta {
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   color: var(--text-muted);
 }
 
 .deadline-tag {
-  font-size: 0.7rem;
+  font-size: var(--text-xs);
   font-weight: 600;
   padding: 3px 10px;
   border-radius: var(--radius-full);
@@ -109,13 +109,13 @@
 .deadline-tag--overdue {
   background: var(--red-glow);
   color: var(--red-400);
-  border: 1px solid rgba(248, 113, 113, 0.3);
+  border: 1px solid oklch(72% 0.18 27 / 0.3);
 }
 
 .deadline-tag--soon {
-  background: rgba(251, 191, 36, 0.15);
+  background: oklch(84% 0.16 82 / 0.13);
   color: var(--amber-400);
-  border: 1px solid rgba(251, 191, 36, 0.3);
+  border: 1px solid oklch(84% 0.16 82 / 0.3);
 }
 
 .deadline-tag--normal {

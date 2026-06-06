@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import Sidebar, { useSidebar } from '../Sidebar';
+import Sidebar, { SidebarProvider, useSidebar } from '../Sidebar';
 import TopBar from './TopBar';
 import './AppShell.css';
 
@@ -24,5 +24,9 @@ function AppShellInner({ children }: AppShellProps) {
 }
 
 export function AppShell({ children }: AppShellProps) {
-  return <AppShellInner>{children}</AppShellInner>;
+  return (
+    <SidebarProvider>
+      <AppShellInner>{children}</AppShellInner>
+    </SidebarProvider>
+  );
 }

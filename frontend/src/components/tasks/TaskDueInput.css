@@ -1,0 +1,280 @@
+.task-due-input {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(104px, 0.85fr);
+  gap: var(--space-xs);
+}
+
+.clock-picker__trigger {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 11px;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  background: var(--surface-primary);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast);
+}
+
+.clock-picker__trigger svg {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+}
+
+.clock-picker__trigger:hover:not(:disabled),
+.clock-picker__trigger[aria-expanded='true'] {
+  border-color: var(--teal-500);
+  background: var(--surface-panel);
+}
+
+.clock-picker__trigger:focus-visible {
+  border-color: var(--teal-500);
+  box-shadow: 0 0 0 3px var(--teal-glow);
+}
+
+.clock-picker__trigger:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.clock-picker {
+  position: fixed;
+  z-index: 420;
+  width: 300px;
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
+  padding: 16px;
+  border: 1px solid var(--border-strong);
+  border-radius: 18px;
+  background: var(--surface-panel);
+  box-shadow: 0 22px 60px oklch(0% 0 0 / 0.46);
+  transform-origin: top right;
+  animation: clock-picker-enter var(--dur-fast) var(--ease-out) both;
+}
+
+.clock-picker--above {
+  transform-origin: bottom right;
+  animation-name: clock-picker-enter-above;
+}
+
+@keyframes clock-picker-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-5px) scale(0.98);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes clock-picker-enter-above {
+  from {
+    opacity: 0;
+    transform: translateY(5px) scale(0.98);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+.clock-picker__eyebrow {
+  display: block;
+  margin-bottom: 10px;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.clock-picker__display {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.clock-picker__digits {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-secondary);
+  font-family: var(--font-heading);
+  font-size: 1.8rem;
+  line-height: 1;
+}
+
+.clock-picker__digits button {
+  min-width: 58px;
+  padding: 10px 8px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: var(--surface-secondary);
+  color: var(--text-primary);
+  font: inherit;
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.clock-picker__digits button.is-active {
+  border-color: var(--border-accent);
+  background: var(--teal-glow);
+  color: var(--teal-300);
+}
+
+.clock-picker__period {
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  overflow: hidden;
+  min-width: 48px;
+  border: 1px solid var(--border-primary);
+  border-radius: 9px;
+}
+
+.clock-picker__period button {
+  border: 0;
+  background: var(--surface-secondary);
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.clock-picker__period button + button {
+  border-top: 1px solid var(--border-primary);
+}
+
+.clock-picker__period button.is-active {
+  background: oklch(84% 0.1 184 / 0.16);
+  color: var(--teal-300);
+}
+
+.clock-picker__face {
+  position: relative;
+  width: 236px;
+  height: 236px;
+  margin: 0 auto;
+  border: 1px solid var(--border-secondary);
+  border-radius: 50%;
+  background: var(--surface-primary);
+}
+
+.clock-picker__face button {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 2;
+  display: flex;
+  width: 34px;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  transform: translate(-50%, -50%) translate(var(--clock-x), var(--clock-y));
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.clock-picker__face button:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.clock-picker__face button.is-selected {
+  background: var(--teal-600);
+  color: white;
+}
+
+.clock-picker__hand {
+  position: absolute;
+  bottom: 50%;
+  left: 50%;
+  z-index: 1;
+  width: 2px;
+  height: 73px;
+  border-radius: var(--radius-full);
+  background: var(--teal-500);
+  transform-origin: 50% 100%;
+  pointer-events: none;
+  transition: transform var(--transition-fast);
+}
+
+.clock-picker__hand--minutes {
+  height: 86px;
+}
+
+.clock-picker__center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 3;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--teal-500);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.clock-picker__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.clock-picker__actions button {
+  padding: 7px 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--teal-300);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.clock-picker__actions button:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+@media (max-width: 520px) {
+  .task-due-input {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .clock-picker {
+    width: min(300px, calc(100vw - 24px));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .clock-picker {
+    animation: none;
+  }
+
+  .clock-picker__hand {
+    transition: none;
+  }
+}

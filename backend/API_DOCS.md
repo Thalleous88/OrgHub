@@ -281,6 +281,21 @@ Rules:
 - Authenticated users can create organizations.
 - The creator automatically becomes the first `CORE_BOARD` member.
 
+### Leave Organization
+
+```http
+POST /api/organizations/<organization_id>/leave/
+```
+
+Deactivates the current user's organization membership and any division or
+project memberships inside that organization.
+
+Rules:
+
+- The current user must be an active organization member.
+- The last active `CORE_BOARD` member cannot leave until another Core Board
+  member has been added.
+
 ## Divisions
 
 ### List Divisions

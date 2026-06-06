@@ -3,6 +3,7 @@ import { queryKeys } from '../../lib/queryClient';
 import {
   createOrganization,
   inviteToOrganization,
+  leaveOrganization,
   listOrgMembers,
   listOrganizations,
 } from '../../services/organizations';
@@ -18,6 +19,7 @@ import {
   listProjectMembers,
   listProjects,
 } from '../../services/projects';
+import { useAuth } from '../../context/AuthContext';
 
 export function useOrganizations() {
   return useQuery({
@@ -42,12 +44,35 @@ export function useProjects() {
 
 export function useCreateOrganization() {
   const qc = useQueryClient();
+  const { refreshUser } = useAuth();
   return useMutation({
     mutationFn: createOrganization,
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.organizations });
-      qc.invalidateQueries({ queryKey: queryKeys.currentUser });
-      qc.invalidateQueries({ queryKey: queryKeys.dashboard });
+    onSuccess: async () => {
+      await refreshUser();
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: queryKeys.organizations }),
+        qc.invalidateQueries({ queryKey: queryKeys.currentUser }),
+        qc.invalidateQueries({ queryKey: queryKeys.dashboard }),
+      ]);
+    },
+  });
+}
+
+export function useLeaveOrganization() {
+  const qc = useQueryClient();
+  const { refreshUser } = useAuth();
+  return useMutation({
+    mutationFn: leaveOrganization,
+    onSuccess: async () => {
+      await refreshUser();
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: queryKeys.organizations }),
+        qc.invalidateQueries({ queryKey: queryKeys.divisions }),
+        qc.invalidateQueries({ queryKey: queryKeys.projects }),
+        qc.invalidateQueries({ queryKey: queryKeys.currentUser }),
+        qc.invalidateQueries({ queryKey: queryKeys.dashboard }),
+        qc.invalidateQueries({ queryKey: queryKeys.announcementsFeed }),
+      ]);
     },
   });
 }

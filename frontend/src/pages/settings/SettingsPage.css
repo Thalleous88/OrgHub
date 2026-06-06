@@ -1,0 +1,222 @@
+.settings-content {
+  margin-top: 1.75rem;
+}
+
+.settings-panel,
+.settings-organizations {
+  overflow: hidden;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(circle at 100% 0, rgba(20, 184, 166, 0.08), transparent 32%),
+    var(--surface-glass);
+}
+
+.settings-panel {
+  display: grid;
+  grid-template-columns: minmax(230px, 0.7fr) minmax(320px, 1.3fr);
+  max-width: 880px;
+}
+
+.settings-panel__intro {
+  padding: 2rem;
+  border-right: 1px solid var(--border-secondary);
+}
+
+.settings-panel__intro h2,
+.settings-organizations__header h2 {
+  margin: 6px 0 8px;
+  font-size: 1.25rem;
+}
+
+.settings-panel__intro p,
+.settings-organizations__header p {
+  max-width: 440px;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.86rem;
+}
+
+.settings-panel__eyebrow {
+  color: var(--teal-400);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 2rem;
+}
+
+.settings-form__actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 0.35rem;
+}
+
+.settings-organizations {
+  max-width: 1040px;
+}
+
+.settings-organizations__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 1.75rem 2rem;
+  border-bottom: 1px solid var(--border-secondary);
+}
+
+.organization-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.organization-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 48px minmax(220px, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--border-secondary);
+  transition: background var(--transition-fast);
+}
+
+.organization-row:last-child {
+  border-bottom: 0;
+}
+
+.organization-row:hover {
+  background: rgba(30, 41, 59, 0.28);
+}
+
+.organization-row--current {
+  background: linear-gradient(90deg, rgba(20, 184, 166, 0.09), transparent 65%);
+}
+
+.organization-row--current::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--teal-400);
+  content: '';
+  box-shadow: 0 0 14px var(--teal-glow-strong);
+}
+
+.organization-row__mark {
+  display: flex;
+  width: 48px;
+  height: 48px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-accent);
+  border-radius: 14px;
+  background: linear-gradient(145deg, rgba(20, 184, 166, 0.18), rgba(16, 185, 129, 0.05));
+  color: var(--teal-300);
+  font-family: var(--font-heading);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.organization-row__body {
+  min-width: 0;
+}
+
+.organization-row__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.organization-row__title h3 {
+  margin-right: 2px;
+  font-size: 1rem;
+}
+
+.organization-row__body p {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.organization-row__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.settings-leave-warning {
+  padding: 1rem;
+  border: 1px solid rgba(248, 113, 113, 0.22);
+  border-radius: var(--radius-md);
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.settings-leave-warning strong {
+  color: var(--red-400);
+  font-size: 0.9rem;
+}
+
+.settings-leave-warning p {
+  margin-top: 5px;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+}
+
+@media (max-width: 900px) {
+  .settings-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-panel__intro {
+    border-right: 0;
+    border-bottom: 1px solid var(--border-secondary);
+  }
+
+  .organization-row {
+    grid-template-columns: 48px minmax(0, 1fr);
+  }
+
+  .organization-row__actions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+    padding-left: 64px;
+  }
+}
+
+@media (max-width: 620px) {
+  .settings-panel__intro,
+  .settings-form,
+  .settings-organizations__header {
+    padding: 1.25rem;
+  }
+
+  .settings-organizations__header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .organization-row {
+    padding: 1rem;
+  }
+
+  .organization-row__actions {
+    padding-left: 0;
+  }
+
+  .organization-row__actions .ui-btn {
+    flex: 1;
+  }
+}

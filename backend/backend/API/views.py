@@ -1,4 +1,5 @@
 from django.http import FileResponse, HttpResponseRedirect
+from django.db import transaction
 from django.db.models import Q
 from rest_framework import generics, permissions
 from rest_framework.exceptions import PermissionDenied
@@ -347,6 +348,60 @@ class OrganizationListCreateView(generics.ListCreateAPIView):
             memberships__user=self.request.user,
             memberships__is_active=True,
         ).distinct()
+
+
+class OrganizationLeaveView(APIView):
+    def post(self, request, pk):
+        organization = generics.get_object_or_404(Organization, pk=pk)
+
+        with transaction.atomic():
+            membership = (
+                OrganizationMembership.objects.select_for_update()
+                .filter(
+                    organization=organization,
+                    user=request.user,
+                    is_active=True,
+                )
+                .first()
+            )
+            if membership is None:
+                raise PermissionDenied("You are not an active member of this organization.")
+
+            if membership.role == OrganizationMembership.Role.CORE_BOARD:
+                active_core_board_ids = list(
+                    OrganizationMembership.objects.select_for_update()
+                    .filter(
+                        organization=organization,
+                        role=OrganizationMembership.Role.CORE_BOARD,
+                        is_active=True,
+                    )
+                    .values_list("pk", flat=True)
+                )
+                if len(active_core_board_ids) <= 1:
+                    return Response(
+                        {
+                            "detail": (
+                                "You are the last Core Board member. "
+                                "Invite or promote another Core Board member before leaving."
+                            )
+                        },
+                        status=400,
+                    )
+
+            ProjectMembership.objects.filter(
+                user=request.user,
+                project__division__organization=organization,
+                is_active=True,
+            ).update(is_active=False)
+            DivisionMembership.objects.filter(
+                user=request.user,
+                division__organization=organization,
+                is_active=True,
+            ).update(is_active=False)
+            membership.is_active = False
+            membership.save(update_fields=["is_active"])
+
+        return Response(status=204)
 
 
 class DivisionListCreateView(generics.ListCreateAPIView):

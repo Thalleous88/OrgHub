@@ -3,7 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import "./AuthPage.css";
 
-const orgHubLogo = new URL("../../assets/orghub-logo.png", import.meta.url).href;
+const orgHubLogo = new URL("../../assets/orghub-logo-v2.png", import.meta.url)
+  .href;
 
 export default function LoginPage() {
   const navigate = useNavigate();

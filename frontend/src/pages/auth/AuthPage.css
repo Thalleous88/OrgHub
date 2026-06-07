@@ -3,10 +3,13 @@
    ============================================================ */
 
 .login-page {
+    position: relative;
+    isolation: isolate;
     display: flex;
     min-height: 100vh;
     width: 100%;
     background: var(--navy-950);
+    overflow: hidden;
 }
 
 /* --- Hero Panel (Left) --- */
@@ -166,6 +169,8 @@
 }
 
 .login-card {
+    position: relative;
+    z-index: 2;
     width: 100%;
     max-width: 420px;
     padding: var(--space-xl);
@@ -173,6 +178,153 @@
     border-radius: var(--radius-xl);
     background: var(--surface-panel);
     box-shadow: var(--shadow-md);
+}
+
+/* --- Bottom-right orbital scene --- */
+.auth-orbit {
+    --planet-size: clamp(360px, 34vw, 560px);
+    --orbit-inner: clamp(560px, 56vw, 860px);
+    --orbit-middle: clamp(800px, 75vw, 1140px);
+    --orbit-outer: clamp(1040px, 94vw, 1440px);
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    z-index: 1;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+}
+
+.auth-orbit__planet {
+    position: absolute;
+    right: calc(var(--planet-size) / -2);
+    bottom: calc(var(--planet-size) / -2);
+    width: var(--planet-size);
+    height: var(--planet-size);
+    overflow: hidden;
+    border: 0;
+    border-radius: 50%;
+    color: var(--teal-400);
+    background: radial-gradient(
+        circle at 30% 27%,
+        oklch(70% 0.12 182 / 0.075),
+        oklch(18% 0.035 245 / 0.035) 48%,
+        transparent 76%
+    );
+    box-shadow: inset -30px -30px 80px oklch(8% 0.03 255 / 0.2);
+}
+
+.auth-orbit__planet::before {
+    content: "";
+    position: absolute;
+    inset: 8%;
+    border: 1px dashed oklch(80% 0.1 184 / 0.11);
+    border-radius: 50%;
+    transform: scaleX(0.34) rotate(-12deg);
+}
+
+.auth-orbit__planet::after {
+    content: "";
+    position: absolute;
+    top: 26%;
+    right: 4%;
+    bottom: 26%;
+    left: 4%;
+    border-top: 1px dashed oklch(82% 0.09 184 / 0.1);
+    border-bottom: 1px dashed oklch(82% 0.09 184 / 0.1);
+    border-radius: 50%;
+    transform: rotate(-8deg);
+}
+
+.auth-orbit__matrix {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    fill: currentColor;
+    filter: drop-shadow(0 0 3px oklch(72% 0.13 185 / 0.24));
+}
+
+.auth-orbit__ring {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    border: 1px solid oklch(72% 0.09 195 / 0.22);
+    border-radius: 50%;
+    box-shadow:
+        inset 0 0 28px oklch(66% 0.12 190 / 0.035),
+        0 0 18px oklch(66% 0.12 190 / 0.035);
+    will-change: transform;
+}
+
+.auth-orbit__ring--inner {
+    width: var(--orbit-inner);
+    height: var(--orbit-inner);
+    transform: translate(50%, 50%) rotate(34deg);
+    animation: auth-orbit-inner 16s linear infinite;
+}
+
+.auth-orbit__ring--middle {
+    width: var(--orbit-middle);
+    height: var(--orbit-middle);
+    transform: translate(50%, 50%) rotate(168deg);
+    animation: auth-orbit-middle 24s linear infinite reverse;
+}
+
+.auth-orbit__ring--outer {
+    width: var(--orbit-outer);
+    height: var(--orbit-outer);
+    transform: translate(50%, 50%) rotate(252deg);
+    animation: auth-orbit-outer 32s linear infinite;
+}
+
+.auth-orbit__sphere {
+    --matrix-glow: oklch(72% 0.13 185 / 0.36);
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: clamp(22px, 1.8vw, 30px);
+    height: clamp(22px, 1.8vw, 30px);
+    overflow: hidden;
+    border: 1px solid oklch(84% 0.09 184 / 0.14);
+    border-radius: 50%;
+    color: var(--teal-300);
+    background: oklch(18% 0.035 245 / 0.22);
+    box-shadow:
+        0 0 0 4px oklch(72% 0.13 185 / 0.035),
+        0 0 20px var(--matrix-glow);
+    transform: translate(-50%, -50%);
+}
+
+.auth-orbit__ring--middle .auth-orbit__sphere {
+    --matrix-glow: oklch(74% 0.14 158 / 0.3);
+    width: clamp(18px, 1.45vw, 24px);
+    height: clamp(18px, 1.45vw, 24px);
+    color: var(--emerald-400);
+}
+
+.auth-orbit__ring--outer .auth-orbit__sphere {
+    width: clamp(28px, 2.2vw, 38px);
+    height: clamp(28px, 2.2vw, 38px);
+}
+
+@keyframes auth-orbit-inner {
+    to {
+        transform: translate(50%, 50%) rotate(394deg);
+    }
+}
+
+@keyframes auth-orbit-middle {
+    to {
+        transform: translate(50%, 50%) rotate(528deg);
+    }
+}
+
+@keyframes auth-orbit-outer {
+    to {
+        transform: translate(50%, 50%) rotate(612deg);
+    }
 }
 
 .login-card__badge {

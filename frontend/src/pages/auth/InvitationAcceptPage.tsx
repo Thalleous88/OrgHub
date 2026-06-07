@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useAcceptInvitation } from '../../hooks/queries/useInvitations';
 import { Button } from '../../components/ui';
 import { getApiErrorMessage } from '../../lib/apiError';
+import AuthOrbit from './AuthOrbit';
 import './AuthPage.css';
 
 const orgHubLogo = new URL('../../assets/orghub-logo-v2.png', import.meta.url).href;
@@ -59,6 +60,7 @@ export default function InvitationAcceptPage() {
           <div className="login-hero__orb login-hero__orb--2"></div>
           <div className="login-hero__grid-pattern"></div>
         </div>
+        <AuthOrbit />
       </div>
 
       <div className="login-panel">

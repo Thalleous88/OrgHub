@@ -5,7 +5,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useDashboard } from "../../hooks/queries/useDashboard";
 import "./Sidebar.css";
 
-const orgHubLogo = new URL("../../assets/orghub-logo.png", import.meta.url).href;
+const orgHubLogo = new URL("../../assets/orghub-logo-v2.png", import.meta.url).href;
 
 interface NavItem {
   id: string;

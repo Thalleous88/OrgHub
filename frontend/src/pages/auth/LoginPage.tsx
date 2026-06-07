@@ -1,9 +1,11 @@
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import AuthOrbit from "./AuthOrbit";
 import "./AuthPage.css";
 
-const orgHubLogo = new URL("../../assets/orghub-logo.png", import.meta.url).href;
+const orgHubLogo = new URL("../../assets/orghub-logo-v2.png", import.meta.url)
+  .href;
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -70,6 +72,7 @@ export default function LoginPage() {
           <div className="login-hero__orb login-hero__orb--2"></div>
           <div className="login-hero__grid-pattern"></div>
         </div>
+        <AuthOrbit />
       </div>
 
       {/* Right Login Panel */}

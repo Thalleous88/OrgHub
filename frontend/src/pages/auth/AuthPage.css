@@ -14,7 +14,7 @@
 
 /* --- Hero Panel (Left) --- */
 .login-hero {
-    flex: 1;
+    flex: 60 60 0%;
     position: relative;
     display: flex;
     align-items: center;
@@ -160,7 +160,7 @@
 
 /* --- Login Panel (Right) --- */
 .login-panel {
-    flex: 0 0 520px;
+    flex: 40 40 0%;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -524,6 +524,7 @@
     }
 
     .login-hero {
+        flex: 1;
         padding: var(--space-xl) var(--space-lg);
         min-height: 40vh;
     }

@@ -460,7 +460,7 @@
     border-radius: var(--radius-md);
     background: var(--teal-600);
     border: 1px solid var(--teal-500);
-    color: var(--text-primary);
+    color: white;
     font-weight: 600;
     font-size: 1rem;
     transition:

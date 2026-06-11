@@ -150,7 +150,7 @@
 
 .ui-btn--primary {
   background: var(--teal-600);
-  color: var(--text-primary);
+  color: white;
   border-color: var(--teal-500);
   box-shadow: none;
 }

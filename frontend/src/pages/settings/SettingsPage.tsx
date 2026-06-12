@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from "react";
+import React, { useMemo, useState, type FormEvent } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { AppShell } from "../../components/layout/AppShell";
 import CreateOrganizationModal from "../../components/workspace/CreateOrganizationModal";
@@ -16,6 +16,7 @@ import {
   useToast,
 } from "../../components/ui";
 import { useAuth } from "../../context/AuthContext";
+import { useTheme, type Theme } from "../../context/ThemeContext";
 import { useWorkspace } from "../../context/WorkspaceContext";
 import { getApiErrorMessage } from "../../lib/apiError";
 import {
@@ -32,7 +33,7 @@ import { useAcceptInvitation } from "../../hooks/queries/useInvitations";
 import type { Invitation, Organization } from "../../types/api";
 import "./SettingsPage.css";
 
-type SettingsTab = "profile" | "security" | "organizations";
+type SettingsTab = "profile" | "appearance" | "security" | "organizations";
 
 export default function SettingsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -40,7 +41,7 @@ export default function SettingsPage() {
   const pendingInvitations = dashboard?.pending_invitations ?? [];
   const requestedTab = searchParams.get("tab");
   const activeTab: SettingsTab =
-    requestedTab === "security" || requestedTab === "organizations"
+    requestedTab === "appearance" || requestedTab === "security" || requestedTab === "organizations"
       ? requestedTab
       : "profile";
 
@@ -59,6 +60,7 @@ export default function SettingsPage() {
         onChange={(tab) => setActiveTab(tab as SettingsTab)}
         tabs={[
           { key: "profile", label: "Profile" },
+          { key: "appearance", label: "Appearance" },
           { key: "security", label: "Security" },
           {
             key: "organizations",
@@ -79,6 +81,7 @@ export default function SettingsPage() {
 
       <div className="settings-content">
         {activeTab === "profile" && <ProfileSettings />}
+        {activeTab === "appearance" && <AppearanceSettings />}
         {activeTab === "security" && <SecuritySettings />}
         {activeTab === "organizations" && (
           <OrganizationSettings pendingInvitations={pendingInvitations} />
@@ -272,6 +275,61 @@ function SecuritySettings() {
           </Button>
         </div>
       </form>
+    </section>
+  );
+}
+
+const THEME_OPTIONS: { value: Theme; label: string; description: string; icon: React.ReactNode }[] = [
+  {
+    value: "light",
+    label: "Light",
+    description: "Clean and bright — optimized for daytime use.",
+    icon: <SunIcon />,
+  },
+  {
+    value: "dark",
+    label: "Dark",
+    description: "Easy on the eyes — reduces glare in low-light.",
+    icon: <MoonIcon />,
+  },
+  {
+    value: "system",
+    label: "System",
+    description: "Automatically match your operating system preference.",
+    icon: <MonitorIcon />,
+  },
+];
+
+function AppearanceSettings() {
+  const { theme, setTheme } = useTheme();
+
+  return (
+    <section className="settings-panel settings-panel--appearance">
+      <div className="settings-panel__intro">
+        <span className="settings-panel__eyebrow">Personalization</span>
+        <h2>Appearance</h2>
+        <p>Choose a theme that works best for you. Your preference is saved locally.</p>
+      </div>
+      <div className="appearance-options">
+        {THEME_OPTIONS.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            className={`appearance-option${theme === option.value ? " appearance-option--active" : ""}`}
+            onClick={() => setTheme(option.value)}
+            aria-pressed={theme === option.value}
+          >
+            <span className="appearance-option__icon">{option.icon}</span>
+            <span className="appearance-option__label">{option.label}</span>
+            <span className="appearance-option__desc">{option.description}</span>
+            {theme === option.value && (
+              <span className="appearance-option__check" aria-hidden>
+                <CheckIcon />
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
     </section>
   );
 }
@@ -618,4 +676,38 @@ function getInvitationScopeLabel(invitation: Invitation): string {
   if (invitation.organization !== null) return "Organization invitation";
   if (invitation.division !== null) return "Division invitation";
   return "Project invitation";
+}
+
+function SunIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+    </svg>
+  );
+}
+
+function MoonIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+    </svg>
+  );
+}
+
+function MonitorIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x="2" y="3" width="20" height="14" rx="2" />
+      <path d="M8 21h8M12 17v4" />
+    </svg>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M20 6 9 17l-5-5" />
+    </svg>
+  );
 }

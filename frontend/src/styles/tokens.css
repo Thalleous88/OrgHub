@@ -41,3 +41,17 @@
   --radius-xl: 16px;
   --radius-full: 9999px;
 }
+
+:root.light {
+  --color-paper: oklch(97% 0.006 260);
+  --color-panel: oklch(100% 0 0);
+  --color-panel-2: oklch(97% 0.004 258);
+  --color-hover: oklch(92% 0.008 258);
+  --color-ink: oklch(18% 0.015 255);
+  --color-muted: oklch(52% 0.02 255);
+  --color-accent: oklch(52% 0.12 182);
+  --color-accent-strong: oklch(44% 0.115 184);
+  --color-danger: oklch(48% 0.22 27);
+  --color-warning: oklch(60% 0.18 82);
+  --color-violet: oklch(52% 0.15 300);
+}

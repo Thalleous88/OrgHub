@@ -58,12 +58,14 @@
   --surface-panel: oklch(19% 0.021 258);
   --surface-panel-2: oklch(21% 0.022 258);
   --surface-hover: oklch(28% 0.03 258);
+  --surface-1: rgba(255, 255, 255, 0.04);
 
   /* Borders */
   --border-primary: oklch(70% 0.025 255 / 0.16);
   --border-secondary: oklch(70% 0.025 255 / 0.1);
   --border-strong: oklch(76% 0.025 255 / 0.28);
   --border-accent: oklch(70% 0.12 182 / 0.34);
+  --border-subtle: rgba(255, 255, 255, 0.08);
 
   /* Shadows */
   --shadow-sm: 0 1px 2px oklch(0% 0 0 / 0.28);
@@ -117,6 +119,74 @@
   --topbar-height: 64px;
 }
 
+/* --- Light Theme --- */
+:root.light {
+  color-scheme: light;
+
+  /* Primary palette — inverted to cool grays */
+  --navy-950: oklch(97% 0.006 260);
+  --navy-900: oklch(95% 0.008 258);
+  --navy-800: oklch(92% 0.01 258);
+  --navy-700: oklch(86% 0.012 258);
+  --navy-600: oklch(78% 0.016 256);
+  --navy-500: oklch(68% 0.018 255);
+
+  /* Accent — slightly richer for contrast on white */
+  --teal-500: oklch(52% 0.12 182);
+  --teal-400: oklch(48% 0.12 182);
+  --teal-300: oklch(42% 0.12 184);
+  --teal-600: oklch(44% 0.115 184);
+  --teal-700: oklch(38% 0.1 185);
+  --teal-glow: oklch(52% 0.12 182 / 0.1);
+  --teal-glow-strong: oklch(52% 0.12 182 / 0.18);
+
+  /* Accent – Emerald */
+  --emerald-400: oklch(50% 0.14 158);
+  --emerald-500: oklch(44% 0.14 158);
+
+  /* Danger */
+  --red-400: oklch(52% 0.2 27);
+  --red-500: oklch(48% 0.22 27);
+  --red-glow: oklch(55% 0.2 27 / 0.1);
+
+  /* Warning */
+  --amber-400: oklch(60% 0.18 82);
+  --amber-500: oklch(55% 0.19 70);
+  --violet-400: oklch(52% 0.15 300);
+  --violet-glow: oklch(52% 0.15 300 / 0.1);
+
+  /* Text */
+  --text-primary: oklch(18% 0.015 255);
+  --text-secondary: oklch(38% 0.02 255);
+  --text-muted: oklch(52% 0.02 255);
+  --text-inverse: oklch(96% 0.006 255);
+
+  /* Surfaces */
+  --surface-primary: oklch(98% 0.004 260);
+  --surface-secondary: oklch(94% 0.006 258);
+  --surface-tertiary: oklch(90% 0.008 258);
+  --surface-elevated: oklch(100% 0 0 / 0.92);
+  --surface-glass: oklch(98% 0.004 260 / 0.92);
+  --surface-glass-light: oklch(94% 0.006 258 / 0.5);
+  --surface-panel: oklch(100% 0 0);
+  --surface-panel-2: oklch(97% 0.004 258);
+  --surface-hover: oklch(92% 0.008 258);
+  --surface-1: var(--surface-secondary);
+
+  /* Borders */
+  --border-primary: oklch(30% 0.02 255 / 0.12);
+  --border-secondary: oklch(30% 0.02 255 / 0.08);
+  --border-strong: oklch(30% 0.02 255 / 0.2);
+  --border-accent: oklch(52% 0.12 182 / 0.26);
+  --border-subtle: var(--border-secondary);
+
+  /* Shadows — softer for light backgrounds */
+  --shadow-sm: 0 1px 3px oklch(0% 0 0 / 0.07);
+  --shadow-md: 0 10px 28px oklch(0% 0 0 / 0.08);
+  --shadow-lg: 0 18px 48px oklch(0% 0 0 / 0.12);
+  --shadow-glow: 0 0 20px var(--teal-glow);
+}
+
 /* --- Reset & Base --- */
 *,
 *::before,
@@ -142,6 +212,7 @@ body {
   line-height: 1.6;
   min-height: 100vh;
   overflow-x: clip;
+  transition: background var(--dur-slow) var(--ease-in-out), color var(--dur-slow) var(--ease-in-out);
 }
 
 #root {
